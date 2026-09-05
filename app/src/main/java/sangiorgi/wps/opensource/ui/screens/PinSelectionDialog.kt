@@ -25,16 +25,21 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -108,10 +113,11 @@ class PinSelectionViewModel @Inject constructor(
 /**
  * PIN picker dialog.
  *
- * The dialog keeps its full-height footprint but reads as a light sheet rather
- * than a stack of nested boxes: a single elevated surface, flat toggleable rows
- * whose selection tint fades in with an effects spring, and one shared meta row
- * for the selection count and the select-all action.
+ * Built on Material 3 Expressive: the mode switch is a segmented button row, the
+ * dismiss action is a tonal icon button, PIN rows use the selected-container
+ * pattern with spring-animated tints, and every component inherits the expressive
+ * motion scheme from the theme. The dialog keeps its full-height footprint but
+ * reads as a light sheet rather than a stack of nested boxes.
  */
 @Composable
 fun PinSelectionDialog(
@@ -209,7 +215,7 @@ fun PinSelectionDialog(
     }
 }
 
-/** Title with the network name as quiet context, and the dismiss action. */
+/** Title with the network name as quiet context, and the tonal dismiss action. */
 @Composable
 private fun PinDialogHeader(ssid: String?, onDismiss: () -> Unit) {
     Row(
@@ -234,28 +240,36 @@ private fun PinDialogHeader(ssid: String?, onDismiss: () -> Unit) {
             }
         }
 
-        IconButton(onClick = onDismiss) {
+        FilledTonalIconButton(onClick = onDismiss) {
             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
         }
     }
 }
 
-/** Even-width mode chips: the two modes read as one switch, not two floating blobs. */
+/**
+ * Mode switch as a single segmented control - the Material 3 choice for two
+ * mutually exclusive segments, reading as one switch instead of two chips.
+ */
 @Composable
 private fun PinModeToggle(showCustomInput: Boolean, onAlgorithmMode: () -> Unit, onCustomMode: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        FilterChip(
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        SegmentedButton(
             selected = !showCustomInput,
             onClick = onAlgorithmMode,
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            icon = {
+                Icon(Icons.Default.Pin, contentDescription = null, modifier = Modifier.size(16.dp))
+            },
             label = { Text(stringResource(R.string.algorithm_pins)) },
             modifier = Modifier.weight(1f),
         )
-        FilterChip(
+        SegmentedButton(
             selected = showCustomInput,
             onClick = onCustomMode,
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            icon = {
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+            },
             label = { Text(stringResource(R.string.custom_pin)) },
             modifier = Modifier.weight(1f),
         )
@@ -436,7 +450,10 @@ private fun CustomPinInput(customPin: String, onCustomPinChange: (String) -> Uni
             enter = ExpressiveMotion.expandEnter(),
             exit = ExpressiveMotion.collapseExit(),
         ) {
-            TextButton(onClick = { onCustomPinChange(calculateWpsChecksum(customPin)) }) {
+            FilledTonalButton(
+                onClick = { onCustomPinChange(calculateWpsChecksum(customPin)) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Icon(
                     Icons.Default.Calculate,
                     contentDescription = null,
@@ -449,26 +466,29 @@ private fun CustomPinInput(customPin: String, onCustomPinChange: (String) -> Uni
     }
 }
 
-/** Cancel / start actions; the start button squishes with expressive press feedback. */
+/**
+ * Cancel plus a confident full-width start action - the Material 3 Expressive
+ * emphasis pattern for the primary task of the dialog; squishes on press.
+ */
 @Composable
 private fun PinDialogFooter(startEnabled: Boolean, onCancel: () -> Unit, onStart: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(onClick = onCancel) {
             Text(stringResource(R.string.cancel))
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
-
         val startInteraction = remember { MutableInteractionSource() }
         Button(
             onClick = onStart,
             enabled = startEnabled,
             interactionSource = startInteraction,
-            modifier = Modifier.expressivePress(startInteraction, pressedScale = 0.97f),
+            modifier = Modifier
+                .weight(1f)
+                .expressivePress(startInteraction, pressedScale = 0.97f),
         ) {
             Text(stringResource(R.string.start_testing))
         }
