@@ -12,7 +12,9 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -89,6 +91,15 @@ object ExpressiveMotion {
     // Scale of a screen at the start of an enter or the end of an exit.
     private const val SCALE_RECESS = 0.92f
 
+    // Scale of a screen being gently covered by (or revealed under) a rising task screen.
+    private const val SCALE_COVER = 0.96f
+
+    // Fraction of the screen height traveled by a rising (task) screen.
+    private const val RISE_FRACTION = 6
+
+    // Fraction of the item height traveled by a staggered entrance.
+    private const val STAGGER_FRACTION = 8
+
     /**
      * Forward navigation: the new screen springs in from the right edge while the
      * previous screen recedes with a parallax slide and a slight scale down.
@@ -117,6 +128,39 @@ object ExpressiveMotion {
 
     /** Collapse + quick fade for collapsible sections that hide content. */
     fun collapseExit(): ExitTransition = shrinkVertically(SpatialFastSize) + fadeOut(EffectsFastFloat)
+
+    /**
+     * Task screens (connection progress) rise from the bottom edge like a sheet:
+     * springy vertical slide + gentle fade + a slight scale settle.
+     */
+    fun enterRise(): EnterTransition = fadeIn(EffectsDefaultFloat) +
+        slideInVertically(SpatialDefaultOffset) { it / RISE_FRACTION } +
+        scaleIn(SpatialDefaultFloat, initialScale = SCALE_COVER)
+
+    /** Back navigation: the task screen sinks back down towards the bottom edge. */
+    fun popExitRise(): ExitTransition = fadeOut(EffectsFastFloat) +
+        slideOutVertically(SpatialFastOffset) { it / RISE_FRACTION } +
+        scaleOut(SpatialFastFloat, targetScale = SCALE_COVER)
+
+    /**
+     * Forward navigation: the screen being covered by a rising task screen recedes
+     * in place with a quick fade and a slight scale down (no horizontal slide, so the
+     * vertical rise reads as a separate motion layer).
+     */
+    fun exitReceive(): ExitTransition = fadeOut(EffectsFastFloat) +
+        scaleOut(SpatialFastFloat, targetScale = SCALE_COVER)
+
+    /** Back navigation: the revealed screen settles back from a gentle scale. */
+    fun popEnterReceive(): EnterTransition = fadeIn(EffectsDefaultFloat) +
+        scaleIn(SpatialDefaultFloat, initialScale = SCALE_COVER)
+
+    /**
+     * Staggered entrance for content revealed one card after another: each item
+     * springs up a short distance while fading in, so lists cascade into place.
+     */
+    fun staggerIn(): EnterTransition = fadeIn(EffectsSlowFloat) +
+        slideInVertically(SpatialDefaultOffset) { it / STAGGER_FRACTION } +
+        scaleIn(SpatialDefaultFloat, initialScale = SCALE_COVER)
 
     /**
      * Springy scale + fade-through entrance for state swaps (`AnimatedContent`).

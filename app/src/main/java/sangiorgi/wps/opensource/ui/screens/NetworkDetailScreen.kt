@@ -2,6 +2,7 @@ package sangiorgi.wps.opensource.ui.screens
 
 import android.os.Parcelable
 import androidx.compose.animation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,18 +21,21 @@ import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.domain.models.*
 import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
+import sangiorgi.wps.opensource.ui.motion.expressivePress
 import sangiorgi.wps.opensource.utils.RootChecker
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,19 +96,26 @@ fun NetworkDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
-            // Network Info Card
-            NetworkInfoCard(network)
+            // Network Info Card. Cards stagger in one after another so the
+            // screen cascades into place with expressive motion.
+            StaggeredAppear(index = 0) {
+                NetworkInfoCard(network)
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // WPS Status Card
-            WpsStatusCard(network)
+            StaggeredAppear(index = 1) {
+                WpsStatusCard(network)
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Root Status Card (show warning if not rooted)
             if (!isRooted) {
-                RootRequiredCard()
+                StaggeredAppear(index = 2) {
+                    RootRequiredCard()
+                }
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
@@ -174,15 +185,25 @@ fun NetworkDetailScreen(
                 )
             }
 
-            // Show Advanced Options
+            // Show Advanced Options. The chevron morphs between states with a
+            // springy scale + fade instead of snapping between two glyphs.
             TextButton(
                 onClick = { showAdvancedOptions = !showAdvancedOptions },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Icon(
-                    imageVector = if (showAdvancedOptions) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
-                )
+                AnimatedContent(
+                    targetState = showAdvancedOptions,
+                    transitionSpec = {
+                        ExpressiveMotion.swapIn(scaleFrom = 0.7f) togetherWith
+                            ExpressiveMotion.swapOut(scaleTo = 0.7f)
+                    },
+                    label = "advancedChevron",
+                ) { expanded ->
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                    )
+                }
                 Text(stringResource(R.string.advanced_options))
             }
 
@@ -256,6 +277,23 @@ fun NetworkDetailScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun StaggeredAppear(index: Int, content: @Composable () -> Unit) {
+    // Each card waits for its turn in the cascade, then springs in with a short
+    // slide + fade. Saved state keeps the entrance from replaying on rotation.
+    var appeared by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(index * 70L)
+        appeared = true
+    }
+    AnimatedVisibility(
+        visible = appeared,
+        enter = ExpressiveMotion.staggerIn(),
+    ) {
+        content()
     }
 }
 
@@ -464,14 +502,18 @@ private fun ConnectionMethodCard(
     // The card is clickable even when not rooted to show the snackbar
     // But visually it appears disabled when not rooted
     val visuallyEnabled = enabled && isRooted
+    // Squishy press feedback consistent with the network list cards.
+    val cardInteraction = remember { MutableInteractionSource() }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .expressivePress(cardInteraction, pressedScale = 0.97f),
         onClick = onClick,
         // Keep enabled to allow click for snackbar
         enabled = enabled,
+        interactionSource = cardInteraction,
         colors = CardDefaults.cardColors(
             containerColor = when {
                 !visuallyEnabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)

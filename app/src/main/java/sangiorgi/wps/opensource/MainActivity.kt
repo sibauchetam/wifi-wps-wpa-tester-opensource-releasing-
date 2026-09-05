@@ -211,7 +211,12 @@ fun MainScreen(rootChecker: RootChecker) {
                                 )
                             }
 
-                            composable<NavRoute.NetworkDetail> {
+                            composable<NavRoute.NetworkDetail>(
+                                // The detail screen recedes in place when a task screen
+                                // rises over it, and settles back when the task pops away.
+                                exitTransition = { ExpressiveMotion.exitReceive() },
+                                popEnterTransition = { ExpressiveMotion.popEnterReceive() },
+                            ) {
                                 selectedNetwork?.let { network ->
                                     NetworkDetailScreen(
                                         network = network,
@@ -227,7 +232,12 @@ fun MainScreen(rootChecker: RootChecker) {
                                 }
                             }
 
-                            composable<NavRoute.ConnectionProgress> {
+                            composable<NavRoute.ConnectionProgress>(
+                                // Task screens rise like a sheet: springy vertical slide
+                                // + scale settle, and they sink back down when dismissed.
+                                enterTransition = { ExpressiveMotion.enterRise() },
+                                popExitTransition = { ExpressiveMotion.popExitRise() },
+                            ) {
                                 val connectionViewModel: WpsConnectionViewModel = hiltViewModel()
                                 val connectionState by connectionViewModel.connectionState
                                     .collectAsStateWithLifecycle()

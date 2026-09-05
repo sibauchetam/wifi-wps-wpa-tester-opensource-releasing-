@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.permissions.PermissionManager
 import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
+import sangiorgi.wps.opensource.ui.motion.expressivePulse
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,11 +72,14 @@ fun PermissionScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Main icon
+            // Main icon. Breathes with a slow, organic pulse so the gate feels alive
+            // instead of showing a frozen glyph.
             Icon(
                 imageVector = Icons.Default.Security,
                 contentDescription = null,
-                modifier = Modifier.size(80.dp),
+                modifier = Modifier
+                    .size(80.dp)
+                    .expressivePulse(),
                 tint = MaterialTheme.colorScheme.primary,
             )
 

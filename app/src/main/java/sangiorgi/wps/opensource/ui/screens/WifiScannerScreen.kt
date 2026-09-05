@@ -1,6 +1,7 @@
 package sangiorgi.wps.opensource.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,6 +14,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +27,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.domain.models.*
 import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
+import sangiorgi.wps.opensource.ui.motion.expressivePress
+import sangiorgi.wps.opensource.ui.motion.expressivePulse
 import sangiorgi.wps.opensource.ui.scanner.WifiScannerViewModel
 import sangiorgi.wps.opensource.ui.theme.*
 
@@ -52,7 +57,12 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                 title = {
                     Column {
                         Text(stringResource(R.string.wifi_wps_scanner))
-                        if (isScanning) {
+                        // The scanning status springs open below the title instead of popping in.
+                        AnimatedVisibility(
+                            visible = isScanning,
+                            enter = ExpressiveMotion.expandEnter(),
+                            exit = ExpressiveMotion.collapseExit(),
+                        ) {
                             Text(
                                 stringResource(R.string.scanning),
                                 style = MaterialTheme.typography.bodySmall,
@@ -76,97 +86,40 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
             )
         },
         floatingActionButton = {
+            // Squishy press: the FAB compresses instantly and springs back on release,
+            // giving the primary action a physical, elastic feel.
+            val fabInteraction = remember { MutableInteractionSource() }
             ExtendedFloatingActionButton(
                 onClick = { viewModel.startScan() },
                 icon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.scan)) },
                 text = { Text(stringResource(R.string.scan_button)) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
+                interactionSource = fabInteraction,
+                modifier = Modifier.expressivePress(fabInteraction, pressedScale = 0.94f),
             )
         },
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+        // Expressive pull-to-refresh: dragging the list springs the Material
+        // indicator in, and releasing triggers a new scan.
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = isScanning,
+            onRefresh = { viewModel.startScan() },
+            state = pullToRefreshState,
+            modifier = Modifier.fillMaxSize(),
         ) {
-            // WiFi status and error messages
-            AnimatedVisibility(
-                visible = !uiState.isWifiEnabled && !dismissedWifiWarning,
-                enter = ExpressiveMotion.expandEnter(),
-                exit = ExpressiveMotion.collapseExit(),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
             ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                    ),
+                // WiFi status and error messages
+                AnimatedVisibility(
+                    visible = !uiState.isWifiEnabled && !dismissedWifiWarning,
+                    enter = ExpressiveMotion.expandEnter(),
+                    exit = ExpressiveMotion.collapseExit(),
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Icon(
-                                    Icons.Default.WifiOff,
-                                    contentDescription = stringResource(R.string.wifi_off),
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    stringResource(R.string.wifi_is_disabled),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                )
-                            }
-                            IconButton(onClick = { dismissedWifiWarning = true }) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.dismiss),
-                                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                                )
-                            }
-                        }
-                        Text(
-                            stringResource(R.string.enable_wifi_to_scan),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = { viewModel.toggleWifi() },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                            ),
-                            modifier = Modifier.align(Alignment.End),
-                        ) {
-                            Text(stringResource(R.string.enable_wifi))
-                        }
-                    }
-                }
-            }
-
-            // Show other errors if any
-            val wifiMustBeEnabledError = stringResource(R.string.wifi_must_be_enabled)
-            val showError = uiState.error != null &&
-                (uiState.error != wifiMustBeEnabledError || uiState.isWifiEnabled)
-            AnimatedVisibility(
-                visible = showError,
-                enter = ExpressiveMotion.expandEnter(),
-                exit = ExpressiveMotion.collapseExit(),
-            ) {
-                uiState.error?.let { error ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -175,104 +128,176 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                         ),
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                text = error,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.weight(1f),
-                            )
-                            TextButton(
-                                onClick = { viewModel.clearError() },
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(stringResource(R.string.dismiss))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Icon(
+                                        Icons.Default.WifiOff,
+                                        contentDescription = stringResource(R.string.wifi_off),
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        stringResource(R.string.wifi_is_disabled),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                    )
+                                }
+                                IconButton(onClick = { dismissedWifiWarning = true }) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = stringResource(R.string.dismiss),
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    )
+                                }
+                            }
+                            Text(
+                                stringResource(R.string.enable_wifi_to_scan),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = { viewModel.toggleWifi() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                ),
+                                modifier = Modifier.align(Alignment.End),
+                            ) {
+                                Text(stringResource(R.string.enable_wifi))
                             }
                         }
                     }
                 }
-            }
 
-            // Filter options
-            AnimatedVisibility(
-                visible = showFilters,
-                enter = ExpressiveMotion.expandEnter(),
-                exit = ExpressiveMotion.collapseExit(),
-            ) {
-                FilterCard(
-                    showOnlyWps = showOnlyWps,
-                    onShowOnlyWpsChange = { showOnlyWps = it },
-                    sortBy = sortBy,
-                    onSortByChange = { sortBy = it },
-                )
-            }
-
-            // Network count
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                // Show other errors if any
+                val wifiMustBeEnabledError = stringResource(R.string.wifi_must_be_enabled)
+                val showError = uiState.error != null &&
+                    (uiState.error != wifiMustBeEnabledError || uiState.isWifiEnabled)
+                AnimatedVisibility(
+                    visible = showError,
+                    enter = ExpressiveMotion.expandEnter(),
+                    exit = ExpressiveMotion.collapseExit(),
                 ) {
-                    Text(
-                        stringResource(R.string.networks_found, networks.size),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    if (showOnlyWps) {
-                        Text(
-                            stringResource(R.string.wps_count, networks.count { it.hasWps }),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                    uiState.error?.let { error ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                            ),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = error,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                TextButton(
+                                    onClick = { viewModel.clearError() },
+                                ) {
+                                    Text(stringResource(R.string.dismiss))
+                                }
+                            }
+                        }
                     }
                 }
-            }
 
-            // Network list
-            val filteredNetworks = remember(networks, showOnlyWps, sortBy) {
-                networks
-                    .filter { if (showOnlyWps) it.hasWps else true }
-                    .sortedWith(
-                        when (sortBy) {
-                            SortOption.SIGNAL -> compareByDescending { it.signalLevel }
-                            SortOption.NAME -> compareBy { it.ssid }
-                            SortOption.CHANNEL -> compareBy { it.channel }
-                            SortOption.SECURITY -> compareBy { it.security }
-                        },
-                    )
-            }
-
-            if (filteredNetworks.isEmpty()) {
-                EmptyState(isScanning = isScanning)
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 8.dp),
+                // Filter options
+                AnimatedVisibility(
+                    visible = showFilters,
+                    enter = ExpressiveMotion.expandEnter(),
+                    exit = ExpressiveMotion.collapseExit(),
                 ) {
-                    items(
-                        items = filteredNetworks,
-                        key = { it.bssid },
-                    ) { network ->
-                        NetworkCard(
-                            network = network,
-                            onClick = { onNetworkSelected(network) },
-                            // Expressive springs animate reordering (sort/filter changes),
-                            // and fade items in/out as they join or leave the list.
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = ExpressiveMotion.EffectsDefaultFloat,
-                                placementSpec = ExpressiveMotion.SpatialDefaultOffset,
-                                fadeOutSpec = ExpressiveMotion.EffectsFastFloat,
-                            ),
+                    FilterCard(
+                        showOnlyWps = showOnlyWps,
+                        onShowOnlyWpsChange = { showOnlyWps = it },
+                        sortBy = sortBy,
+                        onSortByChange = { sortBy = it },
+                    )
+                }
+
+                // Network count
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            stringResource(R.string.networks_found, networks.size),
+                            style = MaterialTheme.typography.bodyMedium,
                         )
+                        if (showOnlyWps) {
+                            Text(
+                                stringResource(R.string.wps_count, networks.count { it.hasWps }),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+
+                // Network list
+                val filteredNetworks = remember(networks, showOnlyWps, sortBy) {
+                    networks
+                        .filter { if (showOnlyWps) it.hasWps else true }
+                        .sortedWith(
+                            when (sortBy) {
+                                SortOption.SIGNAL -> compareByDescending { it.signalLevel }
+                                SortOption.NAME -> compareBy { it.ssid }
+                                SortOption.CHANNEL -> compareBy { it.channel }
+                                SortOption.SECURITY -> compareBy { it.security }
+                            },
+                        )
+                }
+
+                if (filteredNetworks.isEmpty()) {
+                    EmptyState(isScanning = isScanning)
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                    ) {
+                        items(
+                            items = filteredNetworks,
+                            key = { it.bssid },
+                        ) { network ->
+                            NetworkCard(
+                                network = network,
+                                onClick = { onNetworkSelected(network) },
+                                // Expressive springs animate reordering (sort/filter changes),
+                                // and fade items in/out as they join or leave the list.
+                                modifier = Modifier.animateItem(
+                                    fadeInSpec = ExpressiveMotion.EffectsDefaultFloat,
+                                    placementSpec = ExpressiveMotion.SpatialDefaultOffset,
+                                    fadeOutSpec = ExpressiveMotion.EffectsFastFloat,
+                                ),
+                            )
+                        }
                     }
                 }
             }
@@ -334,11 +359,15 @@ private fun FilterCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NetworkCard(network: WifiNetwork, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    // Squishy press: the card compresses while touched and springs back on release.
+    val cardInteraction = remember { MutableInteractionSource() }
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .expressivePress(cardInteraction, pressedScale = 0.97f),
         onClick = onClick,
+        interactionSource = cardInteraction,
         colors = CardDefaults.cardColors(
             containerColor = if (network.hasWps) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
@@ -527,12 +556,33 @@ private fun EmptyState(isScanning: Boolean) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
-                imageVector = if (isScanning) Icons.Default.Wifi else Icons.Default.WifiOff,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            // The icon swaps between scanning/empty states with a springy pop,
+            // and breathes with a slow pulse while a scan is running.
+            AnimatedContent(
+                targetState = isScanning,
+                transitionSpec = {
+                    ExpressiveMotion.swapIn(scaleFrom = 0.7f) togetherWith
+                        ExpressiveMotion.swapOut(scaleTo = 0.7f)
+                },
+                label = "emptyStateIcon",
+            ) { scanning ->
+                Icon(
+                    imageVector = if (scanning) Icons.Default.Wifi else Icons.Default.WifiOff,
+                    contentDescription = null,
+                    modifier = if (scanning) {
+                        Modifier
+                            .size(64.dp)
+                            .expressivePulse()
+                    } else {
+                        Modifier.size(64.dp)
+                    },
+                    tint = if (scanning) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = if (isScanning) {

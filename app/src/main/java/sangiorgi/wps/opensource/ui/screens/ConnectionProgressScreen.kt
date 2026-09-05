@@ -34,6 +34,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -109,6 +110,7 @@ fun ConnectionProgressScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
+                    strokeCap = StrokeCap.Round,
                 )
 
                 Text(
@@ -148,75 +150,86 @@ fun ConnectionProgressScreen(
                 }
             }
 
-            // Action Buttons
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                when (connectionState.status) {
-                    ConnectionStatus.CONNECTING -> {
-                        Button(
-                            onClick = onCancel,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                            ),
-                        ) {
-                            Icon(Icons.Default.Stop, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.stop))
+            // Action Buttons. AnimatedContent swaps the whole button set between
+            // statuses with a springy scale + fade-through, so Cancel/Retry/Done
+            // hand over with motion instead of snapping.
+            AnimatedContent(
+                targetState = connectionState.status,
+                transitionSpec = {
+                    ExpressiveMotion.swapIn(scaleFrom = 0.9f) togetherWith
+                        ExpressiveMotion.swapOut(scaleTo = 0.9f)
+                },
+                label = "actionButtons",
+            ) { status ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    when (status) {
+                        ConnectionStatus.CONNECTING -> {
+                            Button(
+                                onClick = onCancel,
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                ),
+                            ) {
+                                Icon(Icons.Default.Stop, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.stop))
+                            }
                         }
+                        ConnectionStatus.SUCCESS -> {
+                            Button(
+                                onClick = onDone,
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                ),
+                            ) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.done))
+                            }
+                        }
+                        ConnectionStatus.FAILED, ConnectionStatus.CANCELLED -> {
+                            OutlinedButton(
+                                onClick = onClose,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(stringResource(R.string.close))
+                            }
+                            Button(
+                                onClick = onRetry,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.retry))
+                            }
+                        }
+                        ConnectionStatus.WIFI_ENABLED -> {
+                            OutlinedButton(
+                                onClick = { openWifiSettings(context) },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Icon(Icons.Default.Wifi, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.open_wifi_settings))
+                            }
+                            Button(
+                                onClick = onRetry,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.retry))
+                            }
+                        }
+                        else -> {}
                     }
-                    ConnectionStatus.SUCCESS -> {
-                        Button(
-                            onClick = onDone,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                            ),
-                        ) {
-                            Icon(Icons.Default.Check, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.done))
-                        }
-                    }
-                    ConnectionStatus.FAILED, ConnectionStatus.CANCELLED -> {
-                        OutlinedButton(
-                            onClick = onClose,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(stringResource(R.string.close))
-                        }
-                        Button(
-                            onClick = onRetry,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.retry))
-                        }
-                    }
-                    ConnectionStatus.WIFI_ENABLED -> {
-                        OutlinedButton(
-                            onClick = { openWifiSettings(context) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(Icons.Default.Wifi, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.open_wifi_settings))
-                        }
-                        Button(
-                            onClick = onRetry,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.retry))
-                        }
-                    }
-                    else -> {}
                 }
             }
         }
