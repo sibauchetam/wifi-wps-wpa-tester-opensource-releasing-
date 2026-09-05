@@ -3,77 +3,79 @@ package sangiorgi.wps.opensource.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // =============================================================================
-// Cybersecurity Theme Colors for WiFi WPS Tester
-// A professional, security-focused color palette
+// Warm Charcoal & Olive theme for WiFi WPS Tester
+// A calm, muted, earthy palette: deep warm charcoal surfaces, soft sage-olive
+// accents, cream text and restrained clay highlights.
 // =============================================================================
 
-// Primary - Cyan (Technology, Security, Trust)
-val CyberCyan10 = Color(0xFF001F24)
-val CyberCyan20 = Color(0xFF00363D)
-val CyberCyan30 = Color(0xFF004F58)
-val CyberCyan40 = Color(0xFF006874)
-val CyberCyan80 = Color(0xFF4DD0E1)
-val CyberCyan90 = Color(0xFFB2EBF2)
-val CyberCyan100 = Color(0xFFFFFFFF)
+// Primary - Muted Olive-Sage (calm, confident, natural)
+val Olive10 = Color(0xFF171E08)
+val Olive20 = Color(0xFF2C3314)
+val Olive30 = Color(0xFF434A29)
+val Olive40 = Color(0xFF5B6240)
+val Olive80 = Color(0xFFB7C48F)
+val Olive90 = Color(0xFFD3E0AC)
+val Olive100 = Color(0xFFF9FBEF)
 
-// Secondary - Slate Blue (Professional, Calm)
-val SlateBlue10 = Color(0xFF0D1B2A)
-val SlateBlue20 = Color(0xFF1B3A4B)
-val SlateBlue30 = Color(0xFF2D5A6E)
-val SlateBlue40 = Color(0xFF3D7A94)
-val SlateBlue80 = Color(0xFFA8DADC)
-val SlateBlue90 = Color(0xFFD6F0F2)
-val SlateBlue100 = Color(0xFFFFFFFF)
+// Secondary - Warm Sage Gray (quiet, supporting)
+val Sage10 = Color(0xFF14180D)
+val Sage20 = Color(0xFF2F3324)
+val Sage30 = Color(0xFF454A38)
+val Sage40 = Color(0xFF5D624F)
+val Sage80 = Color(0xFFC4C8B2)
+val Sage90 = Color(0xFFE0E4CE)
+val Sage100 = Color(0xFFFAFBF0)
 
-// Tertiary - Electric Green (Success, Secure, Hacker vibe)
-val ElectricGreen10 = Color(0xFF002204)
-val ElectricGreen20 = Color(0xFF00390A)
-val ElectricGreen30 = Color(0xFF005313)
-val ElectricGreen40 = Color(0xFF006E1C)
-val ElectricGreen80 = Color(0xFF7DCF8A)
-val ElectricGreen90 = Color(0xFFB7F2B8)
-val ElectricGreen100 = Color(0xFFFFFFFF)
+// Tertiary - Soft Clay (terracotta highlight, used sparingly)
+val Clay10 = Color(0xFF2E1505)
+val Clay20 = Color(0xFF452A1A)
+val Clay30 = Color(0xFF5D4030)
+val Clay40 = Color(0xFF785745)
+val Clay80 = Color(0xFFE3B394)
+val Clay90 = Color(0xFFFFD9C2)
+val Clay100 = Color(0xFFFFF8F4)
 
-// Error - Deep Red (Vulnerability, Danger)
-val ErrorRed10 = Color(0xFF410002)
-val ErrorRed20 = Color(0xFF690005)
-val ErrorRed30 = Color(0xFF93000A)
-val ErrorRed40 = Color(0xFFBA1A1A)
-val ErrorRed80 = Color(0xFFFFB4AB)
-val ErrorRed90 = Color(0xFFFFDAD6)
-val ErrorRed100 = Color(0xFFFFFFFF)
+// Error - Muted Brick (danger without neon)
+val ErrorRed10 = Color(0xFF410E0B)
+val ErrorRed20 = Color(0xFF690D05)
+val ErrorRed30 = Color(0xFF8C2B1D)
+val ErrorRed40 = Color(0xFFB3261E)
+val ErrorRed80 = Color(0xFFFFB4A6)
+val ErrorRed90 = Color(0xFFFFDAD2)
+val ErrorRed100 = Color(0xFFFFF8F4)
 
-// Neutral - Dark Gray (Background, Surface)
-val Neutral10 = Color(0xFF1A1C1E)
-val Neutral20 = Color(0xFF2F3133)
-val Neutral60 = Color(0xFF909295)
-val Neutral90 = Color(0xFFE2E3E6)
-val Neutral95 = Color(0xFFF1F2F5)
-val Neutral99 = Color(0xFFFCFCFF)
+// Neutral - Warm Charcoal (backgrounds, surfaces)
+val Neutral10 = Color(0xFF131311)
+val Neutral20 = Color(0xFF28281F)
+val Neutral60 = Color(0xFF93907F)
+val Neutral90 = Color(0xFFE5E3D5)
+val Neutral95 = Color(0xFFF2F0E4)
+val Neutral99 = Color(0xFFFAF8EF)
 
-val NeutralVariant30 = Color(0xFF40484B)
-val NeutralVariant50 = Color(0xFF71787C)
-val NeutralVariant60 = Color(0xFF8B9296)
-val NeutralVariant80 = Color(0xFFC1C8CC)
-val NeutralVariant90 = Color(0xFFDDE4E8)
+val NeutralVariant30 = Color(0xFF3B3B31)
+val NeutralVariant50 = Color(0xFF6F6D5C)
+val NeutralVariant60 = Color(0xFF898673)
+val NeutralVariant80 = Color(0xFFC2C0AE)
+val NeutralVariant90 = Color(0xFFDEDCD0)
 
 // =============================================================================
 // Semantic Colors (for direct use in components)
+// Muted, earthy tones - no neon.
 // =============================================================================
 
-// Signal strength colors
-val SignalExcellent = Color(0xFF00E676) // Bright Green
-val SignalGood = Color(0xFF76FF03) // Light Green
-val SignalFair = Color(0xFFFFEB3B) // Yellow
-val SignalWeak = Color(0xFFFF5722) // Deep Orange
+// Signal strength colors (sage -> clay ramp)
+val SignalExcellent = Color(0xFF9FC383) // Muted sage - excellent
+val SignalGood = Color(0xFFC1C98B) // Pale olive - good
+val SignalFair = Color(0xFFD8C47E) // Muted gold - fair
+val SignalWeak = Color(0xFFDA9A6B) // Muted apricot - weak
 
-// Security level colors
-val SecurityOpen = Color(0xFFFF1744) // Red - Open/Insecure
-val SecurityWep = Color(0xFFFF9100) // Orange - Weak security
-val SecurityWpa = Color(0xFFFFC107) // Amber - Moderate security
-val SecurityWpa2 = Color(0xFF8BC34A) // Light Green - Good security
-val SecurityWpa3 = Color(0xFF00E676) // Green - Excellent security
+// Security level colors (one warm, restrained family)
+val SecurityOpen = Color(0xFFE08A79) // Muted coral - open/insecure
+val SecurityWep = Color(0xFFD9AC7C) // Muted amber - weak security
+val SecurityWpa = Color(0xFFC9BE87) // Muted gold - moderate security
+val SecurityWpa2 = Color(0xFFA9BF8B) // Soft sage - good security
+val SecurityWpa3 = Color(0xFF86B89B) // Eucalyptus - excellent security
 
-val AttackSuccess = Color(0xFF00E676) // Green - PIN found
-val AttackFailed = Color(0xFFFF5252) // Red - Failed
-val AttackWarning = Color(0xFFFFAB00) // Amber - Warning
+val AttackSuccess = Color(0xFFA9C98F) // Soft sage - PIN found
+val AttackFailed = Color(0xFFE08A79) // Muted coral - failed
+val AttackWarning = Color(0xFFD8C47E) // Muted gold - warning

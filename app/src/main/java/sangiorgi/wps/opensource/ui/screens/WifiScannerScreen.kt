@@ -79,9 +79,11 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                         Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
                     }
                 },
+                // Seamless header: the bar melts into the background,
+                // keeping the chrome quiet like the reference design.
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
                 ),
             )
         },
@@ -370,9 +372,10 @@ private fun NetworkCard(network: WifiNetwork, onClick: () -> Unit, modifier: Mod
         interactionSource = cardInteraction,
         colors = CardDefaults.cardColors(
             containerColor = if (network.hasWps) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                // Gently olive-tinted: WPS-capable networks stand out without neon.
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
             } else {
-                MaterialTheme.colorScheme.surface
+                MaterialTheme.colorScheme.surfaceContainer
             },
         ),
     ) {
@@ -465,32 +468,41 @@ private fun NetworkCard(network: WifiNetwork, onClick: () -> Unit, modifier: Mod
 private fun WpsBadge(wpsInfo: WpsInfo?) {
     if (wpsInfo == null) return
 
+    // Fully rounded pill badge with muted tonal colors - informative,
+    // but never loud.
     Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = when {
-            wpsInfo.isLocked -> MaterialTheme.colorScheme.error
-            else -> MaterialTheme.colorScheme.primary
+        shape = RoundedCornerShape(50),
+        color = if (wpsInfo.isLocked) {
+            MaterialTheme.colorScheme.errorContainer
+        } else {
+            MaterialTheme.colorScheme.primaryContainer
         },
     ) {
         Text(
             text = if (wpsInfo.isLocked) stringResource(R.string.wps_locked) else stringResource(R.string.wps),
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimary,
+            color = if (wpsInfo.isLocked) {
+                MaterialTheme.colorScheme.onErrorContainer
+            } else {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            },
         )
     }
 }
 
 @Composable
 private fun SecurityChip(security: SecurityType) {
+    // Soft pill with a whisper of tint - the muted security ramp keeps
+    // information hierarchy without turning the list into a rainbow.
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(50),
         color = when (security) {
-            SecurityType.OPEN -> SecurityOpen.copy(alpha = 0.2f)
-            SecurityType.WEP -> SecurityWep.copy(alpha = 0.2f)
-            SecurityType.WPA -> SecurityWpa.copy(alpha = 0.2f)
-            SecurityType.WPA2 -> SecurityWpa2.copy(alpha = 0.2f)
-            SecurityType.WPA3 -> SecurityWpa3.copy(alpha = 0.2f)
+            SecurityType.OPEN -> SecurityOpen.copy(alpha = 0.14f)
+            SecurityType.WEP -> SecurityWep.copy(alpha = 0.14f)
+            SecurityType.WPA -> SecurityWpa.copy(alpha = 0.14f)
+            SecurityType.WPA2 -> SecurityWpa2.copy(alpha = 0.14f)
+            SecurityType.WPA3 -> SecurityWpa3.copy(alpha = 0.14f)
             else -> MaterialTheme.colorScheme.secondaryContainer
         },
     ) {
@@ -512,9 +524,10 @@ private fun SecurityChip(security: SecurityType) {
 
 @Composable
 private fun BandChip(band: WifiBand) {
+    // Neutral pill - band is metadata, not an accent.
     Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.tertiaryContainer,
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
     ) {
         Text(
             text = when (band) {
@@ -525,7 +538,7 @@ private fun BandChip(band: WifiBand) {
             },
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
