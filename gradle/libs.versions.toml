@@ -20,6 +20,8 @@ materialIconsExtended = "1.7.8"
 mockitoCore = "5.23.0"
 mockitoKotlin = "6.3.0"
 navigationCompose = "2.9.8"
+robolectric = "4.16.1"
+roborazzi = "1.73.0"
 
 [libraries]
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
@@ -51,6 +53,9 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockitoCore" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockitoKotlin" }
 nio = { module = "com.github.topjohnwu.libsu:nio", version.ref = "core" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 service = { module = "com.github.topjohnwu.libsu:service", version.ref = "core" }
 
 [plugins]

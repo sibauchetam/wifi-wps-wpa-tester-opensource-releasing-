@@ -8,13 +8,14 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,10 +55,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -140,77 +144,174 @@ fun PinSelectionDialog(
     var selectedPins by remember(pins) { mutableStateOf(pins.map { it.pin }) }
 
     Dialog(onDismissRequest = onDismiss) {
+        // The sheet hugs its content and only stretches toward 90% of the
+        // screen when the PIN list actually needs the room - no empty desert
+        // under a short list.
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.9f),
+                .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.9f).dp),
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
-            ) {
-                PinDialogHeader(ssid = ssid, onDismiss = onDismiss)
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                PinModeToggle(
+            PinSelectionContent(
+                state = PinSelectionUiState(
+                    ssid = ssid,
+                    pins = pins,
+                    isLoading = isLoading,
                     showCustomInput = showCustomInput,
-                    onAlgorithmMode = {
+                    customPin = customPin,
+                    selectedPins = selectedPins,
+                ),
+                onModeChange = { customMode ->
+                    if (customMode) {
+                        showCustomInput = true
+                    } else {
                         showCustomInput = false
                         customPin = ""
-                    },
-                    onCustomMode = { showCustomInput = true },
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                AnimatedContent(
-                    targetState = showCustomInput,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    transitionSpec = {
-                        ExpressiveMotion.swapIn() togetherWith ExpressiveMotion.swapOut()
-                    },
-                    label = "pinModeContent",
-                ) { customMode ->
-                    if (customMode) {
-                        CustomPinInput(
-                            customPin = customPin,
-                            onCustomPinChange = { customPin = it },
-                        )
-                    } else {
-                        PinListSection(
-                            pins = pins,
-                            isLoading = isLoading,
-                            selectedPins = selectedPins,
-                            onSelectionChange = { selectedPins = it },
-                        )
                     }
+                },
+                onCustomPinChange = { customPin = it },
+                onSelectionChange = { selectedPins = it },
+                onDismiss = onDismiss,
+                onStart = onPinSelected,
+            )
+        }
+    }
+}
+
+/** Immutable snapshot of everything the PIN picker body renders. */
+internal data class PinSelectionUiState(
+    val ssid: String? = null,
+    val pins: List<PinOption> = emptyList(),
+    val isLoading: Boolean = false,
+    val showCustomInput: Boolean = false,
+    val customPin: String = "",
+    val selectedPins: List<String> = emptyList(),
+)
+
+/**
+ * Stateless body of the PIN picker: header, mode toggle, animated mode content
+ * and the action footer. Kept stateless so previews and screenshot tests can
+ * render the exact production dialog with fake data.
+ */
+@Composable
+internal fun PinSelectionContent(
+    state: PinSelectionUiState,
+    onModeChange: (Boolean) -> Unit,
+    onCustomPinChange: (String) -> Unit,
+    onSelectionChange: (List<String>) -> Unit,
+    onDismiss: () -> Unit,
+    onStart: (List<String>) -> Unit,
+) {
+    PinSheetScaffold(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        header = { PinDialogHeader(ssid = state.ssid, onDismiss = onDismiss) },
+        toggle = {
+            PinModeToggle(
+                showCustomInput = state.showCustomInput,
+                onAlgorithmMode = { onModeChange(false) },
+                onCustomMode = { onModeChange(true) },
+            )
+        },
+        body = {
+            AnimatedContent(
+                targetState = state.showCustomInput,
+                modifier = Modifier.fillMaxWidth(),
+                transitionSpec = {
+                    ExpressiveMotion.swapIn() togetherWith ExpressiveMotion.swapOut()
+                },
+                label = "pinModeContent",
+            ) { customMode ->
+                if (customMode) {
+                    CustomPinInput(
+                        customPin = state.customPin,
+                        onCustomPinChange = onCustomPinChange,
+                    )
+                } else {
+                    PinListSection(
+                        pins = state.pins,
+                        isLoading = state.isLoading,
+                        selectedPins = state.selectedPins,
+                        onSelectionChange = onSelectionChange,
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                PinDialogFooter(
-                    startEnabled = if (showCustomInput) {
-                        customPin.length == 8
-                    } else {
-                        selectedPins.isNotEmpty() && !isLoading
-                    },
-                    onCancel = onDismiss,
-                    onStart = {
-                        val finalPins = if (showCustomInput) {
-                            if (customPin.length == 8) listOf(customPin) else emptyList()
-                        } else {
-                            selectedPins
-                        }
-                        if (finalPins.isNotEmpty()) onPinSelected(finalPins)
-                    },
-                )
             }
+        },
+        footer = {
+            PinDialogFooter(
+                startEnabled = if (state.showCustomInput) {
+                    state.customPin.length == 8
+                } else {
+                    state.selectedPins.isNotEmpty() && !state.isLoading
+                },
+                onCancel = onDismiss,
+                onStart = {
+                    val finalPins = if (state.showCustomInput) {
+                        if (state.customPin.length == 8) listOf(state.customPin) else emptyList()
+                    } else {
+                        state.selectedPins
+                    }
+                    if (finalPins.isNotEmpty()) onStart(finalPins)
+                },
+            )
+        },
+    )
+}
+
+/**
+ * Vertical scaffold that keeps the sheet adaptive: header, mode toggle and
+ * footer measure at their natural height first, and the body receives the
+ * remaining room under the dialog's height cap. A short list shrinks the
+ * sheet; a long one scrolls while the footer stays visible.
+ */
+@Composable
+private fun PinSheetScaffold(
+    modifier: Modifier = Modifier,
+    header: @Composable () -> Unit,
+    toggle: @Composable () -> Unit,
+    body: @Composable () -> Unit,
+    footer: @Composable () -> Unit,
+) {
+    SubcomposeLayout(modifier) { constraints ->
+        val gap = 12.dp.roundToPx()
+        val widthConstraints = Constraints(maxWidth = constraints.maxWidth)
+
+        val headerPlaceables = subcompose("header", header).map { it.measure(widthConstraints) }
+        val togglePlaceables = subcompose("toggle", toggle).map { it.measure(widthConstraints) }
+        val footerPlaceables = subcompose("footer", footer).map { it.measure(widthConstraints) }
+        val fixedHeight = headerPlaceables.sumOf { it.height } +
+            togglePlaceables.sumOf { it.height } +
+            footerPlaceables.sumOf { it.height } +
+            gap * 3
+
+        val bodyMaxHeight = (constraints.maxHeight - fixedHeight).coerceAtLeast(0)
+        val bodyPlaceables = subcompose("body", body).map {
+            it.measure(widthConstraints.copy(maxHeight = bodyMaxHeight))
+        }
+        val bodyHeight = bodyPlaceables.sumOf { it.height }
+
+        val totalHeight = (fixedHeight + bodyHeight).coerceAtMost(constraints.maxHeight)
+        layout(constraints.maxWidth, totalHeight) {
+            var y = 0
+            headerPlaceables.forEach {
+                it.placeRelative(0, y)
+                y += it.height
+            }
+            y += gap
+            togglePlaceables.forEach {
+                it.placeRelative(0, y)
+                y += it.height
+            }
+            y += gap
+            bodyPlaceables.forEach {
+                it.placeRelative(0, y)
+                y += it.height
+            }
+            y += gap
+            footerPlaceables.forEach { it.placeRelative(0, y) }
         }
     }
 }
@@ -285,21 +386,25 @@ private fun PinListSection(
     onSelectionChange: (List<String>) -> Unit,
 ) {
     if (isLoading) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+        // Fixed-height loading state keeps the sheet compact while pins resolve.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(280.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.loading_pins),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.loading_pins),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     } else {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -322,7 +427,8 @@ private fun PinListSection(
 
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                contentPadding = PaddingValues(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 items(pins) { pinOption ->
                     PinSelectionItem(
@@ -345,15 +451,17 @@ private fun PinListSection(
 }
 
 /**
- * Flat PIN row: no card container, just a rounded tint that springs in when the
- * row is selected. The checkbox is visual-only; the whole row is toggleable.
+ * Flat PIN row: no card container - a soft primary-container wash springs in
+ * when the row is selected, so a fully-selected list stays calm instead of
+ * turning into a stack of solid blocks. The checkbox is visual-only; the whole
+ * row is toggleable.
  */
 @Composable
 private fun PinSelectionItem(pinOption: PinOption, isSelected: Boolean, onToggle: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val containerColor by animateColorAsState(
         targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primaryContainer
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
         } else {
             Color.Transparent
         },
@@ -373,7 +481,7 @@ private fun PinSelectionItem(pinOption: PinOption, isSelected: Boolean, onToggle
                 role = Role.Checkbox,
                 onValueChange = { onToggle() },
             )
-            .padding(start = 4.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = isSelected, onCheckedChange = null)
@@ -428,7 +536,7 @@ private fun PinBadges(pinOption: PinOption) {
 /** Custom PIN entry: the text field is its own container, no extra box around it. */
 @Composable
 private fun CustomPinInput(customPin: String, onCustomPinChange: (String) -> Unit) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = customPin,
             onValueChange = { value ->
@@ -442,7 +550,7 @@ private fun CustomPinInput(customPin: String, onCustomPinChange: (String) -> Uni
             supportingText = {
                 Text(stringResource(R.string.digits_count, customPin.length))
             },
-            isError = customPin.isNotEmpty() && customPin.length != 8,
+            isError = customPin.isNotEmpty() && customPin.length < 7,
         )
 
         AnimatedVisibility(

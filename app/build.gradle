@@ -8,6 +8,7 @@ plugins {
     id 'kotlin-parcelize'
     id 'kotlin-kapt'
     id 'com.google.dagger.hilt.android'
+    id 'io.github.takahirom.roborazzi'
     id 'com.diffplug.spotless'
     id 'io.gitlab.arturbosch.detekt'
     id 'checkstyle'
@@ -78,6 +79,13 @@ android {
         unitTests {
             // Let android.util.Log calls return defaults instead of throwing in JVM unit tests.
             returnDefaultValues = true
+            // Robolectric (used by the Roborazzi screenshot tests) needs the real resources.
+            includeAndroidResources = true
+            all { test ->
+                test.maxHeapSize = "1536m"
+                // Roborazzi only writes PNGs when it is explicitly enabled.
+                test.systemProperty "roborazzi.enabled", "true"
+            }
         }
     }
     packaging {
@@ -140,6 +148,13 @@ dependencies {
     testImplementation libs.mockito.core
     testImplementation libs.mockito.kotlin
     testImplementation libs.kotlinx.coroutines.test
+    testImplementation libs.robolectric
+    testImplementation libs.roborazzi
+    testImplementation libs.roborazzi.compose
+    testImplementation libs.androidx.junit
+    testImplementation platform(libs.androidx.compose.bom)
+    testImplementation libs.androidx.ui.test.junit4
+    testImplementation libs.androidx.ui.test.manifest
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core
     androidTestImplementation platform(libs.androidx.compose.bom)
