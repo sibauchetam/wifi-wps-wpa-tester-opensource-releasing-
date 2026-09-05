@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Router
@@ -33,6 +35,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import sangiorgi.wps.opensource.R
+import sangiorgi.wps.opensource.algorithm.AlgorithmType
+import sangiorgi.wps.opensource.algorithm.OuiPrefixRules
+import sangiorgi.wps.opensource.algorithm.VendorAlgorithmMatcher
 import sangiorgi.wps.opensource.domain.models.*
 import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import sangiorgi.wps.opensource.ui.motion.expressivePress
@@ -58,6 +63,13 @@ fun NetworkDetailScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // OUI rules resolved for this router: the BSSID prefix table first, merged with the
+    // vendor-string rules. These drive the recommended PINs and the Belkin method visibility.
+    val ouiRule = remember(network.bssid) { OuiPrefixRules.matchedRule(network.bssid) }
+    val matchedTypes = remember(network.bssid, network.vendor) {
+        VendorAlgorithmMatcher.matchedTypes(network.vendor, network.bssid)
+    }
 
     // Check root status asynchronously to avoid blocking UI
     var isRooted by remember { mutableStateOf(false) }
@@ -117,9 +129,22 @@ fun NetworkDetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // OUI Rules insight: which documented PIN weaknesses this hardware family is
+            // known for. Only shown when a rule actually matches the router.
+            if (matchedTypes.isNotEmpty()) {
+                StaggeredAppear(index = 2) {
+                    OuiRulesCard(
+                        matchedPrefix = ouiRule?.prefix?.let { OuiPrefixRules.formatPrefix(it) },
+                        vendorLabel = ouiRule?.vendor ?: network.vendor,
+                        matchedTypes = matchedTypes,
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // Root Status Card (show warning if not rooted)
             if (!isRooted) {
-                StaggeredAppear(index = 2) {
+                StaggeredAppear(index = 3) {
                     RootRequiredCard()
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -171,8 +196,12 @@ fun NetworkDetailScreen(
                 },
             )
 
-            // Belkin Method
-            if (network.vendor.contains("Belkin", ignoreCase = true)) {
+            // Belkin Method: shown when the vendor string says Belkin, or when the OUI rule
+            // table recognizes the BSSID prefix as Belkin hardware even if the vendor
+            // database does not.
+            if (network.vendor.contains("Belkin", ignoreCase = true) ||
+                ouiRule?.types?.contains(AlgorithmType.BELKIN) == true
+            ) {
                 ConnectionMethodCard(
                     title = stringResource(R.string.belkin_specific),
                     description = stringResource(R.string.belkin_specific_description),
@@ -547,6 +576,91 @@ private fun WpsStatusCard(network: WifiNetwork) {
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Insight card that makes the OUI rules visible: it shows which hardware family the router
+ * belongs to (resolved from its BSSID prefix or vendor string) and the documented PIN
+ * weaknesses that will be prioritized inside the PIN dialog.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OuiRulesCard(matchedPrefix: String?, vendorLabel: String, matchedTypes: List<AlgorithmType>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Fingerprint,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(24.dp),
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Text(
+                    text = stringResource(R.string.oui_rules_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = if (matchedPrefix != null) {
+                    stringResource(R.string.oui_rules_matched_prefix, matchedPrefix, vendorLabel)
+                } else {
+                    stringResource(R.string.oui_rules_matched_vendor, vendorLabel)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Documented weakness pills, consistent with the rounded-pill badges
+            // used across the scanner list.
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                matchedTypes.forEach { type ->
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f),
+                    ) {
+                        Text(
+                            text = type.displayName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = stringResource(R.string.oui_rules_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

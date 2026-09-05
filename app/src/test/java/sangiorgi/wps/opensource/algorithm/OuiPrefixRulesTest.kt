@@ -120,4 +120,27 @@ class OuiPrefixRulesTest {
         assertNull(OuiPrefixRules.normalizePrefix("12345"))
         assertNull(OuiPrefixRules.normalizePrefix("nothex!"))
     }
+
+    @Test
+    fun matchedRuleExposesVendorLabelForKnownPrefix() {
+        val rule = OuiPrefixRules.matchedRule("50:C7:BF:12:34:56")
+        assertEquals("TP-Link", rule?.vendor)
+        assertEquals(
+            listOf(AlgorithmType.TPLINK, AlgorithmType.XIAOMI),
+            rule?.types,
+        )
+    }
+
+    @Test
+    fun matchedRuleReturnsNullForUnknownOrMalformedPrefix() {
+        assertNull(OuiPrefixRules.matchedRule("00:11:22:33:44:55"))
+        assertNull(OuiPrefixRules.matchedRule(null))
+        assertNull(OuiPrefixRules.matchedRule("12345"))
+    }
+
+    @Test
+    fun formatPrefixSeparatesBytePairs() {
+        assertEquals("50:C7:BF", OuiPrefixRules.formatPrefix("50C7BF"))
+        assertEquals("50C7B", OuiPrefixRules.formatPrefix("50C7B"))
+    }
 }

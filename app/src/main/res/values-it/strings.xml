@@ -53,6 +53,10 @@
     <string name="standard_wps_description">Prova i PIN WPS comuni per questa rete</string>
     <string name="pixie_dust">Pixie Dust</string>
     <string name="pixie_dust_description">Sfrutta vulnerabilità implementazione WPS</string>
+    <string name="oui_rules_title">Regole OUI</string>
+    <string name="oui_rules_matched_prefix">Prefisso BSSID %1$s · %2$s</string>
+    <string name="oui_rules_matched_vendor">Corrispondenza per produttore · %1$s</string>
+    <string name="oui_rules_description">Le debolezze PIN documentate per questa famiglia di hardware sono contrassegnate con una stella e provate per prime nella finestra di dialogo dei PIN.</string>
     <string name="belkin_specific">Specifico Belkin</string>
     <string name="belkin_specific_description">Usa generazione PIN specifica per Belkin</string>
     <string name="advanced_options">Opzioni Avanzate</string>

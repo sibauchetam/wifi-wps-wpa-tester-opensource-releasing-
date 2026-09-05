@@ -182,9 +182,15 @@ object OuiPrefixRules {
      * Returns the algorithms implied by the BSSID's OUI prefix, or an empty list when the prefix
      * is malformed or not covered by the table.
      */
-    fun match(bssid: String?): List<AlgorithmType> {
-        val prefix = normalizePrefix(bssid) ?: return emptyList()
-        return rules.firstOrNull { it.prefix == prefix }?.types ?: emptyList()
+    fun match(bssid: String?): List<AlgorithmType> = matchedRule(bssid)?.types ?: emptyList()
+
+    /**
+     * Returns the full rule matching the BSSID's OUI prefix, or null when the prefix is malformed
+     * or not covered by the table. Useful when callers also need the human-readable vendor label.
+     */
+    fun matchedRule(bssid: String?): OuiRule? {
+        val prefix = normalizePrefix(bssid) ?: return null
+        return rules.firstOrNull { it.prefix == prefix }
     }
 
     /**
@@ -199,4 +205,7 @@ object OuiPrefixRules {
         val prefix = hex.substring(0, 6)
         return if (prefix.all { it in '0'..'9' || it in 'A'..'F' }) prefix else null
     }
+
+    /** Formats a normalized prefix for display: "50C7BF" becomes "50:C7:BF". */
+    fun formatPrefix(prefix: String): String = if (prefix.length == 6) prefix.chunked(2).joinToString(":") else prefix
 }

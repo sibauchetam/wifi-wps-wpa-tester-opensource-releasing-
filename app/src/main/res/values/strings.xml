@@ -53,6 +53,10 @@
     <string name="standard_wps_description">Try common WPS pins for this network</string>
     <string name="pixie_dust">Pixie Dust</string>
     <string name="pixie_dust_description">Exploit WPS implementation vulnerability</string>
+    <string name="oui_rules_title">OUI Rules</string>
+    <string name="oui_rules_matched_prefix">BSSID prefix %1$s · %2$s</string>
+    <string name="oui_rules_matched_vendor">Matched by vendor · %1$s</string>
+    <string name="oui_rules_description">Documented PIN weaknesses for this hardware family are starred and tried first in the PIN dialog.</string>
     <string name="belkin_specific">Belkin Specific</string>
     <string name="belkin_specific_description">Use Belkin-specific PIN generation</string>
     <string name="advanced_options">Advanced Options</string>
