@@ -50,6 +50,12 @@ fun NetworkDetailScreen(
     var showAdvancedOptions by remember { mutableStateOf(false) }
     var selectedMethod by remember { mutableStateOf<ConnectionMethod?>(null) }
 
+    // Brute force pace. The delay between attempts is the main speed lever for the
+    // 11k divided search space; faster paces raise the risk of a WPS lockout.
+    var bruteForceDelayMs by rememberSaveable {
+        mutableIntStateOf(ConnectionMethod.BRUTE_FORCE_DELAY_GENTLE_MS)
+    }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -223,13 +229,19 @@ fun NetworkDetailScreen(
                         isAdvanced = true,
                         onClick = {
                             if (isRooted) {
-                                onConnectionMethodSelected(ConnectionMethod.BRUTE_FORCE)
+                                onConnectionMethodSelected(ConnectionMethod.BRUTE_FORCE(bruteForceDelayMs))
                             } else {
                                 scope.launch {
                                     snackbarHostState.showSnackbar(rootRequiredMessage)
                                 }
                             }
                         },
+                    )
+
+                    // Attack speed presets for the brute force search.
+                    AttackSpeedSelector(
+                        selectedDelayMs = bruteForceDelayMs,
+                        onDelaySelected = { bruteForceDelayMs = it },
                     )
                 }
             }
@@ -276,6 +288,57 @@ fun NetworkDetailScreen(
                     onConnectionMethodSelected(ConnectionMethod.STANDARD_WITH_PINS(pins))
                 }
             },
+        )
+    }
+}
+
+@Composable
+private fun AttackSpeedSelector(selectedDelayMs: Int, onDelaySelected: (Int) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.attack_speed),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Expressive segmented buttons: the selected pace is a single pill that
+        // highlights inside the row, with the M3 spring animation on selection.
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            SegmentedButton(
+                selected = selectedDelayMs == ConnectionMethod.BRUTE_FORCE_DELAY_GENTLE_MS,
+                onClick = { onDelaySelected(ConnectionMethod.BRUTE_FORCE_DELAY_GENTLE_MS) },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+            ) {
+                Text(stringResource(R.string.speed_gentle))
+            }
+            SegmentedButton(
+                selected = selectedDelayMs == ConnectionMethod.BRUTE_FORCE_DELAY_FAST_MS,
+                onClick = { onDelaySelected(ConnectionMethod.BRUTE_FORCE_DELAY_FAST_MS) },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+            ) {
+                Text(stringResource(R.string.speed_fast))
+            }
+            SegmentedButton(
+                selected = selectedDelayMs == ConnectionMethod.BRUTE_FORCE_DELAY_TURBO_MS,
+                onClick = { onDelaySelected(ConnectionMethod.BRUTE_FORCE_DELAY_TURBO_MS) },
+                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+            ) {
+                Text(stringResource(R.string.speed_turbo))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = stringResource(R.string.speed_lockout_warning),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -596,11 +659,27 @@ sealed class ConnectionMethod : Parcelable {
 
     @Parcelize object BELKIN : ConnectionMethod()
 
-    @Parcelize object BRUTE_FORCE : ConnectionMethod()
-
     @Parcelize object CUSTOM_PIN : ConnectionMethod()
 
     @Parcelize data class STANDARD_WITH_PINS(val pins: List<String>) : ConnectionMethod()
 
     @Parcelize data class CUSTOM_PIN_WITH_VALUE(val pin: String) : ConnectionMethod()
+
+    companion object {
+        /** Library default: 1 attempt per second keeps most routers from rate limiting. */
+        const val BRUTE_FORCE_DELAY_GENTLE_MS = 1000
+
+        /** Faster pace, moderate lockout risk. */
+        const val BRUTE_FORCE_DELAY_FAST_MS = 300
+
+        /** Maximum pace, high lockout risk — for impatient users on unlocked routers. */
+        const val BRUTE_FORCE_DELAY_TURBO_MS = 100
+    }
+
+    /**
+     * Brute force runs inside the native WPS library, which sleeps [delayMs] between PIN
+     * attempts. Lower values finish the 11k divided search space much faster but increase
+     * the chance of tripping the router's WPS lockout.
+     */
+    @Parcelize data class BRUTE_FORCE(val delayMs: Int = BRUTE_FORCE_DELAY_GENTLE_MS) : ConnectionMethod()
 }

@@ -175,4 +175,11 @@
     <string name="root_required_title">Acceso Root Requerido</string>
     <string name="root_required_description">Esta app requiere acceso root para realizar pruebas WPS. Por favor rootea tu dispositivo para usar estas funciones.</string>
     <string name="root_required_message">Se requiere acceso root para esta función</string>
+
+    <!-- Brute Force Attack Speed -->
+    <string name="attack_speed">Velocidad de Ataque</string>
+    <string name="speed_gentle">Suave</string>
+    <string name="speed_fast">Rápida</string>
+    <string name="speed_turbo">Turbo</string>
+    <string name="speed_lockout_warning">Una velocidad mayor termina antes, pero puede activar el bloqueo WPS del router</string>
 </resources>

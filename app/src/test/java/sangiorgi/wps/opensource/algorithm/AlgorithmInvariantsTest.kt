@@ -69,6 +69,8 @@ class AlgorithmInvariantsTest {
             AlgorithmType.ASUS,
             AlgorithmType.AIROCON_REALTEK,
             AlgorithmType.ARCADYAN,
+            AlgorithmType.XIAOMI,
+            AlgorithmType.NULL_PIN,
         )
 
         fileFreeTypes.forEach { type ->
@@ -80,5 +82,21 @@ class AlgorithmInvariantsTest {
             val pin = (result as AlgorithmResult.Success).pin
             assertTrue("$type produced an invalid WPS PIN: $pin", isValidWpsPin(pin))
         }
+    }
+
+    @Test
+    fun nullPinIsAllZeros() {
+        val result = algorithm.generatePin(AlgorithmType.NULL_PIN, sampleBssid, sampleSsid)
+        assertEquals("00000000", (result as AlgorithmResult.Success).pin)
+    }
+
+    @Test
+    fun xiaomiPinMatchesFormula() {
+        // Xiaomi: last four bytes of the MAC as hex, reduced mod 10^7, plus checksum.
+        val tail = sampleBssid.replace(":", "").substring(4, 12).toLong(16)
+        val sevenDigits = (tail % 10_000_000L).toInt()
+        val expected = String.format("%07d%d", sevenDigits, ChecksumCalculator.calculatePreMultiplied(sevenDigits))
+        val result = algorithm.generatePin(AlgorithmType.XIAOMI, sampleBssid, sampleSsid)
+        assertEquals(expected, (result as AlgorithmResult.Success).pin)
     }
 }

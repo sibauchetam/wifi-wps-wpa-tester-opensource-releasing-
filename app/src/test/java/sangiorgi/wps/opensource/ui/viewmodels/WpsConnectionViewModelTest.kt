@@ -71,7 +71,7 @@ class WpsConnectionViewModelTest {
 
     @Test
     fun bruteForce_usesRealWpsSearchSpaceNotTenToTheEight() {
-        viewModel.startConnection(network, ConnectionMethod.BRUTE_FORCE)
+        viewModel.startConnection(network, ConnectionMethod.BRUTE_FORCE())
         assertEquals(11_000, viewModel.connectionState.value.totalPins)
         assertEquals(ConnectionStatus.CONNECTING, viewModel.connectionState.value.status)
     }
@@ -87,7 +87,7 @@ class WpsConnectionViewModelTest {
 
     @Test
     fun cancelConnection_marksCancelledNotFailed() {
-        viewModel.startConnection(network, ConnectionMethod.BRUTE_FORCE)
+        viewModel.startConnection(network, ConnectionMethod.BRUTE_FORCE())
         viewModel.cancelConnection()
         assertEquals(ConnectionStatus.CANCELLED, viewModel.connectionState.value.status)
     }
@@ -124,7 +124,7 @@ class WpsConnectionViewModelTest {
     fun startConnection_blocksWhenWifiEnabled() {
         whenever(wifiManager.isWifiEnabled).thenReturn(true)
 
-        viewModel.startConnection(network, ConnectionMethod.BRUTE_FORCE)
+        viewModel.startConnection(network, ConnectionMethod.BRUTE_FORCE())
 
         assertEquals(ConnectionStatus.WIFI_ENABLED, viewModel.connectionState.value.status)
         // The native attempt must not start while WiFi holds wlan0.

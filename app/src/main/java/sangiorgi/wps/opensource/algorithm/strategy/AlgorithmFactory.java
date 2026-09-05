@@ -12,9 +12,11 @@ import sangiorgi.wps.opensource.algorithm.strategy.impl.BelkinAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.BitBasedAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.DlinkAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.FteAlgorithm;
+import sangiorgi.wps.opensource.algorithm.strategy.impl.NullPinAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.OrangeAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.PinAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.TrendNetAlgorithm;
+import sangiorgi.wps.opensource.algorithm.strategy.impl.XiaomiAlgorithm;
 
 /**
  * Factory class for creating WPS algorithm instances Uses lazy initialization and caching for
@@ -113,6 +115,12 @@ public class AlgorithmFactory {
 
       case FTE:
         return new FteAlgorithm();
+
+      case XIAOMI:
+        return new XiaomiAlgorithm();
+
+      case NULL_PIN:
+        return new NullPinAlgorithm();
 
       default:
         return null;

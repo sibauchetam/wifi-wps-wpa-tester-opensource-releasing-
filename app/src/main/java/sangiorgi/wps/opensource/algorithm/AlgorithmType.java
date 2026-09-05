@@ -18,7 +18,9 @@ public enum AlgorithmType {
   THIRTY_TWO_BIT(114, "32-bit"),
   TWENTY_EIGHT_BIT(115, "28-bit"),
   TRENDNET(116, "TrendNet"),
-  FTE(117, "FTE");
+  FTE(117, "FTE"),
+  XIAOMI(118, "Xiaomi"),
+  NULL_PIN(119, "Empty PIN");
 
   private final int code;
   private final String displayName;

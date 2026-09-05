@@ -175,4 +175,11 @@
     <string name="root_required_title">Root Access Required</string>
     <string name="root_required_description">This app requires root access to perform WPS testing. Please root your device to use these features.</string>
     <string name="root_required_message">Root access is required for this feature</string>
+
+    <!-- Brute Force Attack Speed -->
+    <string name="attack_speed">Attack Speed</string>
+    <string name="speed_gentle">Gentle</string>
+    <string name="speed_fast">Fast</string>
+    <string name="speed_turbo">Turbo</string>
+    <string name="speed_lockout_warning">Faster paces finish sooner but may trigger the router WPS lockout</string>
 </resources>

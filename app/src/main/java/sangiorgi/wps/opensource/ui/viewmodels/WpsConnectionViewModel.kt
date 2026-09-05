@@ -101,8 +101,12 @@ class WpsConnectionViewModel @Inject constructor(
                     wpsManager.testBelkinPin(bssid, ssid, this@WpsConnectionViewModel)
                 }
                 is ConnectionMethod.BRUTE_FORCE -> {
-                    addLog("Starting brute force attack (this may take a long time)...", LogType.WARNING)
-                    wpsManager.bruteForce(bssid, ssid, 1000, this@WpsConnectionViewModel)
+                    addLog(
+                        "Starting brute force attack (${method.delayMs}ms between attempts)...",
+                        LogType.WARNING,
+                    )
+                    addLog("Divided search space: 11,000 PINs (two halves)", LogType.INFO)
+                    wpsManager.bruteForce(bssid, ssid, method.delayMs, this@WpsConnectionViewModel)
                 }
                 else -> {
                     addLog("Testing ${pins.size} PINs...", LogType.INFO)

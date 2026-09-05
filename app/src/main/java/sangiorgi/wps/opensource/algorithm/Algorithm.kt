@@ -120,6 +120,9 @@ class Algorithm private constructor(
             AlgorithmType.ASUS,
             AlgorithmType.AIROCON_REALTEK,
             AlgorithmType.ARCADYAN,
+            AlgorithmType.XIAOMI,
+            // Single-attempt weaknesses
+            AlgorithmType.NULL_PIN,
             // FTE needs SSID + MAC
             AlgorithmType.FTE,
         )
