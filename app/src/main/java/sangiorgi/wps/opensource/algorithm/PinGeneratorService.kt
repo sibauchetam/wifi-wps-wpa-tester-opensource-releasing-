@@ -76,8 +76,10 @@ class PinGeneratorService @Inject constructor(
         }
 
         // 2. Resolve the vendor from the OUI database and derive the priority algorithm set.
+        //    The matcher also consults the built-in OUI prefix rules, so a BSSID whose prefix is
+        //    missing from the database still resolves to its documented algorithm family.
         val vendor = vendorDatabaseHelper.getVendorByMac(bssid)
-        val priorityTypes = VendorAlgorithmMatcher.matchedTypes(vendor).toSet()
+        val priorityTypes = VendorAlgorithmMatcher.matchedTypes(vendor, bssid).toSet()
 
         // 3. Documented community defaults, right after the vendor-specific hits. The Zyxel
         //    factory PIN is flagged recommended when the router actually is a Zyxel.

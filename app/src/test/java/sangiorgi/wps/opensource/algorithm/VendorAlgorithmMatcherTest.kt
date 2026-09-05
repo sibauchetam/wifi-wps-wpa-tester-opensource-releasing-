@@ -42,6 +42,30 @@ class VendorAlgorithmMatcherTest {
     }
 
     @Test
+    fun sagemcomVendorMapsToOrangeAlgorithm() {
+        assertEquals(
+            listOf(AlgorithmType.ORANGE),
+            VendorAlgorithmMatcher.matchedTypes("Sagemcom Broadband SAS"),
+        )
+        assertEquals(
+            listOf(AlgorithmType.ORANGE),
+            VendorAlgorithmMatcher.matchedTypes("Orange - Livebox"),
+        )
+    }
+
+    @Test
+    fun fulltekAndFiberhomeVendorsMapToFteAlgorithm() {
+        assertEquals(
+            listOf(AlgorithmType.FTE),
+            VendorAlgorithmMatcher.matchedTypes("Fulltek Technology Co., Ltd."),
+        )
+        assertEquals(
+            listOf(AlgorithmType.FTE),
+            VendorAlgorithmMatcher.matchedTypes("Fiberhome Telecommunication Technologies Co.,LTD"),
+        )
+    }
+
+    @Test
     fun zyxelVendorMapsToFactoryDefault() {
         val matched = VendorAlgorithmMatcher.matchedTypes("Zyxel Communications Corporation")
         assertEquals(listOf(AlgorithmType.ZYXEL_DEFAULT), matched)
@@ -72,5 +96,51 @@ class VendorAlgorithmMatcherTest {
         assertTrue(VendorAlgorithmMatcher.matchedTypes(null).isEmpty())
         assertTrue(VendorAlgorithmMatcher.matchedTypes("").isEmpty())
         assertTrue(VendorAlgorithmMatcher.matchedTypes("   ").isEmpty())
+    }
+
+    @Test
+    fun bssidPrefixRulesTakePrecedenceAndMergeWithVendorRules() {
+        // TP-Link OUI + Realtek vendor string: both documented families are surfaced,
+        // with the OUI-prefix match first.
+        assertEquals(
+            listOf(
+                AlgorithmType.TPLINK,
+                AlgorithmType.XIAOMI,
+                AlgorithmType.AIROCON_REALTEK,
+                AlgorithmType.NULL_PIN,
+            ),
+            VendorAlgorithmMatcher.matchedTypes("Realtek Semiconductor Corp.", "F4:F2:6D:AA:BB:CC"),
+        )
+    }
+
+    @Test
+    fun bssidPrefixRulesResolveWithoutVendor() {
+        assertEquals(
+            listOf(AlgorithmType.XIAOMI),
+            VendorAlgorithmMatcher.matchedTypes(null, "64:09:80:AA:BB:CC"),
+        )
+    }
+
+    @Test
+    fun unknownBssidPrefixFallsBackToVendorRulesOnly() {
+        assertEquals(
+            listOf(AlgorithmType.XIAOMI),
+            VendorAlgorithmMatcher.matchedTypes("Xiaomi Communications Co Ltd", "00:11:22:33:44:55"),
+        )
+    }
+
+    @Test
+    fun duplicateTypesFromBothSourcesAreDeduplicated() {
+        // Vendor string and OUI prefix both say TP-Link: the type appears exactly once.
+        val matched = VendorAlgorithmMatcher.matchedTypes("TP-LINK TECHNOLOGIES CO.,LTD.", "50C7BF112233")
+        assertEquals(listOf(AlgorithmType.TPLINK, AlgorithmType.XIAOMI), matched)
+    }
+
+    @Test
+    fun malformedBssidIsIgnoredInsteadOfThrowing() {
+        assertEquals(
+            listOf(AlgorithmType.XIAOMI),
+            VendorAlgorithmMatcher.matchedTypes("Xiaomi Communications Co Ltd", "garbage"),
+        )
     }
 }

@@ -1,8 +1,11 @@
 package sangiorgi.wps.opensource.algorithm
 
 /**
- * Maps a router vendor (resolved from the OUI database by BSSID prefix) to the WPS PIN algorithms
- * most likely to work for that vendor, in priority order.
+ * Maps a router to the WPS PIN algorithms most likely to work for it, in priority order.
+ *
+ * Two complementary sources are consulted:
+ * 1. [OuiPrefixRules] — a curated BSSID-prefix table that works with no database access.
+ * 2. Keyword rules over the vendor name resolved from the bundled OUI database.
  *
  * This is a heuristic guide, not a guarantee: it encodes which published PIN-generation weaknesses
  * are historically associated with which vendor, so the PIN dialog can surface the most promising
@@ -28,7 +31,16 @@ object VendorAlgorithmMatcher {
             Rule(listOf("arris", "motorola"), listOf(AlgorithmType.ARRIS)),
             Rule(listOf("arcadyan", "easybox", "vodafone"), listOf(AlgorithmType.ARCADYAN)),
             Rule(listOf("belkin"), listOf(AlgorithmType.BELKIN)),
-            Rule(listOf("fte"), listOf(AlgorithmType.FTE)),
+            // FTE is named after Fulltek; FiberHome ONTs (e.g. Jazztel deployments) share it.
+            Rule(
+                listOf("fte", "fulltek", "fiberhome", "jazztel"),
+                listOf(AlgorithmType.FTE),
+            ),
+            // Sagemcom/Orange Livebox hardware is the documented target of the Orange formula.
+            Rule(
+                listOf("sagemcom", "orange", "livebox"),
+                listOf(AlgorithmType.ORANGE),
+            ),
             Rule(listOf("zyxel"), listOf(AlgorithmType.ZYXEL_DEFAULT)),
             // Realtek-based firmwares are the classic source of both the Airocon formula
             // and the all-zeros empty-PIN weakness.
@@ -36,10 +48,18 @@ object VendorAlgorithmMatcher {
         )
 
     /**
+     * Returns the algorithms associated with a router, most relevant first, combining the
+     * [OuiPrefixRules] table (matched directly on [bssid]) with the vendor-string keyword rules.
+     * Returns an empty list when neither source has a documented algorithm association.
+     */
+    fun matchedTypes(vendor: String?, bssid: String? = null): List<AlgorithmType> =
+        (OuiPrefixRules.match(bssid) + matchedVendorTypes(vendor)).distinct()
+
+    /**
      * Returns the algorithms associated with [vendor], most relevant first. Returns an empty list
      * when the vendor is unknown, blank, or has no documented algorithm association.
      */
-    fun matchedTypes(vendor: String?): List<AlgorithmType> {
+    private fun matchedVendorTypes(vendor: String?): List<AlgorithmType> {
         if (vendor.isNullOrBlank()) return emptyList()
 
         val normalized = vendor.lowercase()
