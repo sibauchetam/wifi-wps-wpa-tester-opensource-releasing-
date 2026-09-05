@@ -10,6 +10,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,6 +33,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import sangiorgi.wps.opensource.domain.models.WifiNetwork
+import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import sangiorgi.wps.opensource.ui.navigation.NavRoute
 import sangiorgi.wps.opensource.ui.scanner.WifiScannerViewModel
 import sangiorgi.wps.opensource.ui.screens.*
@@ -137,116 +140,145 @@ fun MainScreen(rootChecker: RootChecker) {
         permissionViewModel.checkPermissions()
     }
 
-    // Show appropriate screen based on initialization and permission status
-    when (initState) {
-        is WpsApplication.InitializationState.Loading -> {
-            // Show loading screen while initializing
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
-        }
-
-        is WpsApplication.InitializationState.Failed -> {
-            // Show error screen
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Failed to initialize: ${(initState as WpsApplication.InitializationState.Failed).error}",
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        }
-
-        is WpsApplication.InitializationState.Ready -> {
-            // App initialized, check permissions
-            if (permissionState.isReady) {
-                // Permissions granted, show navigation with type-safe routes
-                NavHost(
-                    navController = navController,
-                    startDestination = NavRoute.Scanner,
+    // Show appropriate screen based on initialization and permission status.
+    // AnimatedContent gives initialization changes an expressive fade-through
+    // (springy scale + fade) instead of an abrupt swap.
+    AnimatedContent(
+        targetState = initState,
+        transitionSpec = {
+            ExpressiveMotion.swapIn() togetherWith ExpressiveMotion.swapOut()
+        },
+        label = "initialization",
+    ) { state ->
+        when (state) {
+            is WpsApplication.InitializationState.Loading -> {
+                // Show loading screen while initializing
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    composable<NavRoute.Scanner> {
-                        val viewModel: WifiScannerViewModel = hiltViewModel()
+                    CircularProgressIndicator()
+                }
+            }
 
-                        WifiScannerScreen(
-                            viewModel = viewModel,
-                            onNetworkSelected = { network ->
-                                selectedNetwork = network
-                                navController.navigate(NavRoute.NetworkDetail)
-                            },
-                        )
-                    }
+            is WpsApplication.InitializationState.Failed -> {
+                // Show error screen
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Failed to initialize: ${state.error}",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
 
-                    composable<NavRoute.NetworkDetail> {
-                        selectedNetwork?.let { network ->
-                            NetworkDetailScreen(
-                                network = network,
-                                rootChecker = rootChecker,
-                                onBackClick = {
-                                    navController.popBackStack()
-                                },
-                                onConnectionMethodSelected = { method ->
-                                    selectedMethod = method
-                                    navController.navigate(NavRoute.ConnectionProgress)
-                                },
-                            )
+            is WpsApplication.InitializationState.Ready -> {
+                // App initialized, check permissions. The gate between the permission
+                // screen and the nav graph slides directionally: forward when access
+                // is granted, mirrored when it is revoked.
+                AnimatedContent(
+                    targetState = permissionState.isReady,
+                    transitionSpec = {
+                        if (targetState) {
+                            ExpressiveMotion.enterPush() togetherWith ExpressiveMotion.exitPush()
+                        } else {
+                            ExpressiveMotion.popEnter() togetherWith ExpressiveMotion.popExit()
                         }
-                    }
+                    },
+                    label = "permission-gate",
+                ) { ready ->
+                    if (ready) {
+                        // Permissions granted, show navigation with type-safe routes
+                        NavHost(
+                            navController = navController,
+                            startDestination = NavRoute.Scanner,
+                            enterTransition = { ExpressiveMotion.enterPush() },
+                            exitTransition = { ExpressiveMotion.exitPush() },
+                            popEnterTransition = { ExpressiveMotion.popEnter() },
+                            popExitTransition = { ExpressiveMotion.popExit() },
+                        ) {
+                            composable<NavRoute.Scanner> {
+                                val viewModel: WifiScannerViewModel = hiltViewModel()
 
-                    composable<NavRoute.ConnectionProgress> {
-                        val connectionViewModel: WpsConnectionViewModel = hiltViewModel()
-                        val connectionState by connectionViewModel.connectionState.collectAsStateWithLifecycle()
-
-                        selectedNetwork?.let { network ->
-                            selectedMethod?.let { method ->
-                                LaunchedEffect(Unit) {
-                                    connectionViewModel.startConnection(network, method)
-                                }
-
-                                ConnectionProgressScreen(
-                                    network = network,
-                                    connectionMethod = method,
-                                    connectionState = connectionState,
-                                    onCancel = {
-                                        // Stop the running attempt but stay on screen so the
-                                        // user sees the cancelled result (Close/Retry).
-                                        connectionViewModel.cancelConnection()
-                                    },
-                                    onClose = {
-                                        navController.popBackStack()
-                                    },
-                                    onRetry = {
-                                        connectionViewModel.startConnection(network, method)
-                                    },
-                                    onDone = {
-                                        navController.popBackStack<NavRoute.Scanner>(inclusive = false)
+                                WifiScannerScreen(
+                                    viewModel = viewModel,
+                                    onNetworkSelected = { network ->
+                                        selectedNetwork = network
+                                        navController.navigate(NavRoute.NetworkDetail)
                                     },
                                 )
                             }
+
+                            composable<NavRoute.NetworkDetail> {
+                                selectedNetwork?.let { network ->
+                                    NetworkDetailScreen(
+                                        network = network,
+                                        rootChecker = rootChecker,
+                                        onBackClick = {
+                                            navController.popBackStack()
+                                        },
+                                        onConnectionMethodSelected = { method ->
+                                            selectedMethod = method
+                                            navController.navigate(NavRoute.ConnectionProgress)
+                                        },
+                                    )
+                                }
+                            }
+
+                            composable<NavRoute.ConnectionProgress> {
+                                val connectionViewModel: WpsConnectionViewModel = hiltViewModel()
+                                val connectionState by connectionViewModel.connectionState
+                                    .collectAsStateWithLifecycle()
+
+                                selectedNetwork?.let { network ->
+                                    selectedMethod?.let { method ->
+                                        LaunchedEffect(Unit) {
+                                            connectionViewModel.startConnection(network, method)
+                                        }
+
+                                        ConnectionProgressScreen(
+                                            network = network,
+                                            connectionMethod = method,
+                                            connectionState = connectionState,
+                                            onCancel = {
+                                                // Stop the running attempt but stay on screen so the
+                                                // user sees the cancelled result (Close/Retry).
+                                                connectionViewModel.cancelConnection()
+                                            },
+                                            onClose = {
+                                                navController.popBackStack()
+                                            },
+                                            onRetry = {
+                                                connectionViewModel.startConnection(network, method)
+                                            },
+                                            onDone = {
+                                                navController.popBackStack<NavRoute.Scanner>(inclusive = false)
+                                            },
+                                        )
+                                    }
+                                }
+                            }
                         }
+                    } else {
+                        // Permissions not granted, show permission screen
+                        PermissionScreen(
+                            onPermissionsGranted = {
+                                permissionViewModel.onPermissionsGrantedManually()
+                            },
+                            onRequestPermissions = { permissions ->
+                                permissionLauncher.launch(permissions.toTypedArray())
+                            },
+                            onOpenSettings = {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                                context.startActivity(intent)
+                            },
+                        )
                     }
                 }
-            } else {
-                // Permissions not granted, show permission screen
-                PermissionScreen(
-                    onPermissionsGranted = {
-                        permissionViewModel.onPermissionsGrantedManually()
-                    },
-                    onRequestPermissions = { permissions ->
-                        permissionLauncher.launch(permissions.toTypedArray())
-                    },
-                    onOpenSettings = {
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        }
-                        context.startActivity(intent)
-                    },
-                )
             }
         }
     }

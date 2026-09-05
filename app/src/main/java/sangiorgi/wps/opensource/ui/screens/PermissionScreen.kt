@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.permissions.PermissionManager
+import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,7 +198,11 @@ fun PermissionScreen(
             }
 
             // Additional permissions
-            AnimatedVisibility(visible = showDetails) {
+            AnimatedVisibility(
+                visible = showDetails,
+                enter = ExpressiveMotion.expandEnter(),
+                exit = ExpressiveMotion.collapseExit(),
+            ) {
                 Column {
                     missingPermissions
                         .filter { it !in criticalPermissions }

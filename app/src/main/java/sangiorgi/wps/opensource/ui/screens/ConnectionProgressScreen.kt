@@ -8,6 +8,11 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateFloatAsState
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.domain.models.WifiNetwork
+import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import sangiorgi.wps.opensource.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,12 +96,16 @@ fun ConnectionProgressScreen(
                 connectionMethod = connectionMethod,
             )
 
-            // Progress Section
+            // Progress Section. The progress value is animated with a spring so the
+            // bar glides between pins instead of jumping.
             if (connectionState.totalPins > 0) {
+                val pinProgress by animateFloatAsState(
+                    targetValue = connectionState.currentPinIndex.toFloat() / connectionState.totalPins,
+                    animationSpec = ExpressiveMotion.EffectsSlowFloat,
+                    label = "pinProgress",
+                )
                 LinearProgressIndicator(
-                    progress = {
-                        connectionState.currentPinIndex.toFloat() / connectionState.totalPins
-                    },
+                    progress = { pinProgress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
@@ -219,16 +229,25 @@ private fun ConnectionStatusCard(
     connectionState: ConnectionState,
     connectionMethod: ConnectionMethod,
 ) {
+    // Animate the container color so status changes (connecting -> success/failed)
+    // blend smoothly instead of snapping between surface variants.
+    val statusContainerColor by
+        animateColorAsState(
+            targetValue = when (connectionState.status) {
+                ConnectionStatus.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
+                ConnectionStatus.FAILED, ConnectionStatus.WIFI_ENABLED -> MaterialTheme.colorScheme.errorContainer
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            },
+            animationSpec = ExpressiveMotion.EffectsDefaultColor,
+            label = "statusCardColor",
+        )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = when (connectionState.status) {
-                ConnectionStatus.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
-                ConnectionStatus.FAILED, ConnectionStatus.WIFI_ENABLED -> MaterialTheme.colorScheme.errorContainer
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            },
+            containerColor = statusContainerColor,
         ),
     ) {
         Column(
@@ -237,51 +256,61 @@ private fun ConnectionStatusCard(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Status Icon with Animation
+            // Status Icon with Animation. AnimatedContent swaps between the spinner
+            // and the result icons with a springy scale + fade-through.
             Box(
                 modifier = Modifier.size(64.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                when (connectionState.status) {
-                    ConnectionStatus.CONNECTING -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(64.dp),
-                            strokeWidth = 4.dp,
-                        )
+                AnimatedContent(
+                    targetState = connectionState.status,
+                    transitionSpec = {
+                        ExpressiveMotion.swapIn(scaleFrom = 0.6f) togetherWith
+                            ExpressiveMotion.swapOut(scaleTo = 0.6f)
+                    },
+                    label = "statusIcon",
+                ) { status ->
+                    when (status) {
+                        ConnectionStatus.CONNECTING -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(64.dp),
+                                strokeWidth = 4.dp,
+                            )
+                        }
+                        ConnectionStatus.SUCCESS -> {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        ConnectionStatus.FAILED -> {
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        ConnectionStatus.CANCELLED -> {
+                            Icon(
+                                imageVector = Icons.Default.Cancel,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        ConnectionStatus.WIFI_ENABLED -> {
+                            Icon(
+                                imageVector = Icons.Default.WifiOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        else -> {}
                     }
-                    ConnectionStatus.SUCCESS -> {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    ConnectionStatus.FAILED -> {
-                        Icon(
-                            imageVector = Icons.Default.Error,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                    ConnectionStatus.CANCELLED -> {
-                        Icon(
-                            imageVector = Icons.Default.Cancel,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    ConnectionStatus.WIFI_ENABLED -> {
-                        Icon(
-                            imageVector = Icons.Default.WifiOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                    else -> {}
                 }
             }
 
@@ -317,44 +346,53 @@ private fun ConnectionStatusCard(
                 textAlign = TextAlign.Center,
             )
 
-            // Success Details
-            if (connectionState.status == ConnectionStatus.SUCCESS && connectionState.successPin != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+            // Success Details. Revealed with an expressive expand + fade.
+            val successPin = connectionState.successPin
+            AnimatedVisibility(
+                visible = connectionState.status == ConnectionStatus.SUCCESS && successPin != null,
+                enter = ExpressiveMotion.expandEnter(),
+                exit = ExpressiveMotion.collapseExit(),
+            ) {
+                val password = connectionState.password
 
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.primary,
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.primary,
                     ) {
-                        Text(
-                            text = stringResource(R.string.pin_found),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                        Text(
-                            text = connectionState.successPin,
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontFamily = FontFamily.Monospace,
-                        )
-                        if (connectionState.password != null) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
                             Text(
-                                text = stringResource(R.string.password_format, connectionState.password),
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = stringResource(R.string.pin_found),
+                                style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
-                        }
+                            Text(
+                                text = successPin ?: "",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                            if (password != null) {
+                                Text(
+                                    text = stringResource(R.string.password_format, password),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ResultActions(
-                            ssid = network.ssid,
-                            pin = connectionState.successPin,
-                            password = connectionState.password,
-                        )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            ResultActions(
+                                ssid = network.ssid,
+                                pin = successPin ?: "",
+                                password = password,
+                            )
+                        }
                     }
                 }
             }

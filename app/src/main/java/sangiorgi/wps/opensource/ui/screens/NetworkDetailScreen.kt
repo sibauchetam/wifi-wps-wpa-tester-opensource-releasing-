@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.domain.models.*
+import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import sangiorgi.wps.opensource.utils.RootChecker
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -185,7 +186,11 @@ fun NetworkDetailScreen(
                 Text(stringResource(R.string.advanced_options))
             }
 
-            AnimatedVisibility(visible = showAdvancedOptions) {
+            AnimatedVisibility(
+                visible = showAdvancedOptions,
+                enter = ExpressiveMotion.expandEnter(),
+                exit = ExpressiveMotion.collapseExit(),
+            ) {
                 Column {
                     // Brute Force
                     ConnectionMethodCard(

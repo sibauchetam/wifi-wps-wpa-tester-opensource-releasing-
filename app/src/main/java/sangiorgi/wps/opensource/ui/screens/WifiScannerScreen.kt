@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.domain.models.*
+import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import sangiorgi.wps.opensource.ui.scanner.WifiScannerViewModel
 import sangiorgi.wps.opensource.ui.theme.*
 
@@ -61,7 +62,7 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                     }
                 },
                 actions = {
-                    IconButton(onClick = { !showFilters }) {
+                    IconButton(onClick = { showFilters = !showFilters }) {
                         Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.filter))
                     }
                     IconButton(onClick = { viewModel.startScan() }) {
@@ -90,7 +91,11 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                 .padding(paddingValues),
         ) {
             // WiFi status and error messages
-            if (!uiState.isWifiEnabled && !dismissedWifiWarning) {
+            AnimatedVisibility(
+                visible = !uiState.isWifiEnabled && !dismissedWifiWarning,
+                enter = ExpressiveMotion.expandEnter(),
+                exit = ExpressiveMotion.collapseExit(),
+            ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -153,9 +158,15 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
             }
 
             // Show other errors if any
-            uiState.error?.let { error ->
-                val wifiMustBeEnabledError = stringResource(R.string.wifi_must_be_enabled)
-                if (error != wifiMustBeEnabledError || uiState.isWifiEnabled) {
+            val wifiMustBeEnabledError = stringResource(R.string.wifi_must_be_enabled)
+            val showError = uiState.error != null &&
+                (uiState.error != wifiMustBeEnabledError || uiState.isWifiEnabled)
+            AnimatedVisibility(
+                visible = showError,
+                enter = ExpressiveMotion.expandEnter(),
+                exit = ExpressiveMotion.collapseExit(),
+            ) {
+                uiState.error?.let { error ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -190,8 +201,8 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
             // Filter options
             AnimatedVisibility(
                 visible = showFilters,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
+                enter = ExpressiveMotion.expandEnter(),
+                exit = ExpressiveMotion.collapseExit(),
             ) {
                 FilterCard(
                     showOnlyWps = showOnlyWps,
@@ -254,6 +265,13 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                         NetworkCard(
                             network = network,
                             onClick = { onNetworkSelected(network) },
+                            // Expressive springs animate reordering (sort/filter changes),
+                            // and fade items in/out as they join or leave the list.
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = ExpressiveMotion.EffectsDefaultFloat,
+                                placementSpec = ExpressiveMotion.SpatialDefaultOffset,
+                                fadeOutSpec = ExpressiveMotion.EffectsFastFloat,
+                            ),
                         )
                     }
                 }
@@ -315,9 +333,13 @@ private fun FilterCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NetworkCard(network: WifiNetwork, onClick: () -> Unit) {
+private fun NetworkCard(
+    network: WifiNetwork,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp),
         onClick = onClick,
