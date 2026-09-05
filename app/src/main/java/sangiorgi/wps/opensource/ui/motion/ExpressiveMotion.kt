@@ -93,28 +93,24 @@ object ExpressiveMotion {
      * Forward navigation: the new screen springs in from the right edge while the
      * previous screen recedes with a parallax slide and a slight scale down.
      */
-    fun enterPush(): EnterTransition =
-        fadeIn(EffectsDefaultFloat) +
-            slideInHorizontally(SpatialDefaultOffset) { it / SLIDE_FULL } +
-            scaleIn(SpatialDefaultFloat, initialScale = SCALE_RECESS)
+    fun enterPush(): EnterTransition = fadeIn(EffectsDefaultFloat) +
+        slideInHorizontally(SpatialDefaultOffset) { it / SLIDE_FULL } +
+        scaleIn(SpatialDefaultFloat, initialScale = SCALE_RECESS)
 
     /** Forward navigation: the covered screen recedes and fades out quickly. */
-    fun exitPush(): ExitTransition =
-        fadeOut(EffectsFastFloat) +
-            slideOutHorizontally(SpatialFastOffset) { -it / SLIDE_PARALLAX } +
-            scaleOut(SpatialFastFloat, targetScale = SCALE_RECESS)
+    fun exitPush(): ExitTransition = fadeOut(EffectsFastFloat) +
+        slideOutHorizontally(SpatialFastOffset) { -it / SLIDE_PARALLAX } +
+        scaleOut(SpatialFastFloat, targetScale = SCALE_RECESS)
 
     /** Back navigation: the revealed screen springs back with a parallax slide. */
-    fun popEnter(): EnterTransition =
-        fadeIn(EffectsDefaultFloat) +
-            slideInHorizontally(SpatialDefaultOffset) { -it / SLIDE_PARALLAX } +
-            scaleIn(SpatialDefaultFloat, initialScale = SCALE_RECESS)
+    fun popEnter(): EnterTransition = fadeIn(EffectsDefaultFloat) +
+        slideInHorizontally(SpatialDefaultOffset) { -it / SLIDE_PARALLAX } +
+        scaleIn(SpatialDefaultFloat, initialScale = SCALE_RECESS)
 
     /** Back navigation: the top screen springs out to the right edge. */
-    fun popExit(): ExitTransition =
-        fadeOut(EffectsFastFloat) +
-            slideOutHorizontally(SpatialFastOffset) { it / SLIDE_FULL } +
-            scaleOut(SpatialFastFloat, targetScale = SCALE_RECESS)
+    fun popExit(): ExitTransition = fadeOut(EffectsFastFloat) +
+        slideOutHorizontally(SpatialFastOffset) { it / SLIDE_FULL } +
+        scaleOut(SpatialFastFloat, targetScale = SCALE_RECESS)
 
     /** Expand + gentle fade for collapsible sections that reveal content. */
     fun expandEnter(): EnterTransition = expandVertically(SpatialDefaultSize) + fadeIn(EffectsDefaultFloat)

@@ -333,11 +333,7 @@ private fun FilterCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NetworkCard(
-    network: WifiNetwork,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun NetworkCard(network: WifiNetwork, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier
             .fillMaxWidth()
