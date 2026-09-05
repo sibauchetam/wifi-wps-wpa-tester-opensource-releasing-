@@ -149,6 +149,7 @@
     <string name="start_testing">Avvia Test</string>
     <string name="default_wps_pin">PIN WPS Predefinito</string>
     <string name="loading_pins">Caricamento PIN…</string>
+    <string name="pin_recommended">Consigliato</string>
 
     <!-- Error Messages -->
     <string name="error_location_permission_required">Permesso di localizzazione richiesto per la scansione WiFi</string>

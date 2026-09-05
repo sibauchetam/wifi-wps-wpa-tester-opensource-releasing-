@@ -70,6 +70,7 @@ class AlgorithmInvariantsTest {
             AlgorithmType.AIROCON_REALTEK,
             AlgorithmType.ARCADYAN,
             AlgorithmType.XIAOMI,
+            AlgorithmType.TPLINK,
             AlgorithmType.NULL_PIN,
         )
 
@@ -98,5 +99,56 @@ class AlgorithmInvariantsTest {
         val expected = String.format("%07d%d", sevenDigits, ChecksumCalculator.calculatePreMultiplied(sevenDigits))
         val result = algorithm.generatePin(AlgorithmType.XIAOMI, sampleBssid, sampleSsid)
         assertEquals(expected, (result as AlgorithmResult.Success).pin)
+    }
+
+    @Test
+    fun tplinkPinMatchesFormula() {
+        // TP-LINK uses the same published formula as Xiaomi: last four MAC bytes as hex,
+        // mod 10^7, plus checksum.
+        val tail = sampleBssid.replace(":", "").substring(4, 12).toLong(16)
+        val sevenDigits = (tail % 10_000_000L).toInt()
+        val expected = String.format("%07d%d", sevenDigits, ChecksumCalculator.calculatePreMultiplied(sevenDigits))
+        val result = algorithm.generatePin(AlgorithmType.TPLINK, sampleBssid, sampleSsid)
+        assertEquals(expected, (result as AlgorithmResult.Success).pin)
+    }
+
+    @Test
+    fun tplinkPinEqualsXiaomiPin() {
+        // Same underlying formula - the two entries must agree so deduplication works.
+        val xiaomi = (
+            algorithm.generatePin(
+                AlgorithmType.XIAOMI,
+                sampleBssid,
+                sampleSsid,
+            ) as AlgorithmResult.Success
+            ).pin
+        val tplink = (
+            algorithm.generatePin(
+                AlgorithmType.TPLINK,
+                sampleBssid,
+                sampleSsid,
+            ) as AlgorithmResult.Success
+            ).pin
+        assertEquals(xiaomi, tplink)
+    }
+
+    @Test
+    fun staticDefaultsAreReturnedVerbatim() {
+        // Famous factory defaults are documented WITHOUT a recomputed checksum digit -
+        // most APs do not validate it, so the PIN must be returned exactly as published.
+        val zyxel = algorithm.generatePin(AlgorithmType.ZYXEL_DEFAULT, sampleBssid, sampleSsid)
+        assertEquals("22222480", (zyxel as AlgorithmResult.Success).pin)
+
+        val common = algorithm.generatePin(AlgorithmType.COMMON_DEFAULT, sampleBssid, sampleSsid)
+        assertEquals("11111110", (common as AlgorithmResult.Success).pin)
+    }
+
+    @Test
+    fun staticDefaultsAreNotAutoSuggested() {
+        // Static defaults do not satisfy the checksum invariant, so they must stay out of the
+        // auto-suggested set (which is covered by suggestedPinsAreWellFormedAndChecksumValid).
+        val autoSuggested = Algorithm.AUTO_SUGGESTED_ALGORITHMS.toList()
+        assertTrue(!autoSuggested.contains(AlgorithmType.ZYXEL_DEFAULT))
+        assertTrue(!autoSuggested.contains(AlgorithmType.COMMON_DEFAULT))
     }
 }

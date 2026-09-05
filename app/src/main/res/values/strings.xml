@@ -149,6 +149,7 @@
     <string name="start_testing">Start Testing</string>
     <string name="default_wps_pin">Default WPS PIN</string>
     <string name="loading_pins">Loading PINs…</string>
+    <string name="pin_recommended">Recommended</string>
 
     <!-- Error Messages -->
     <string name="error_location_permission_required">Location permission required for WiFi scanning</string>

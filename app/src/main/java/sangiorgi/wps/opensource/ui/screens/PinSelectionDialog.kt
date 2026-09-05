@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -81,6 +82,7 @@ class PinSelectionViewModel @Inject constructor(
                         pin = pinWithSource.pin,
                         description = pinWithSource.source,
                         isFromDatabase = pinWithSource.isFromDatabase,
+                        isRecommended = pinWithSource.isRecommended,
                     )
                 }
             } finally {
@@ -364,6 +366,14 @@ private fun PinSelectionItem(pinOption: PinOption, isSelected: Boolean, onToggle
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
+                    if (pinOption.isRecommended) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = stringResource(R.string.pin_recommended),
+                            modifier = Modifier.height(14.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                     if (pinOption.isFromDatabase) {
                         Icon(
                             Icons.Default.Storage,
@@ -375,7 +385,7 @@ private fun PinSelectionItem(pinOption: PinOption, isSelected: Boolean, onToggle
                     Text(
                         text = pinOption.description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (pinOption.isFromDatabase) {
+                        color = if (pinOption.isFromDatabase || pinOption.isRecommended) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -391,6 +401,7 @@ data class PinOption(
     val pin: String,
     val description: String,
     val isFromDatabase: Boolean = false,
+    val isRecommended: Boolean = false,
 )
 
 /**

@@ -20,7 +20,10 @@ public enum AlgorithmType {
   TRENDNET(116, "TrendNet"),
   FTE(117, "FTE"),
   XIAOMI(118, "Xiaomi"),
-  NULL_PIN(119, "Empty PIN");
+  NULL_PIN(119, "Empty PIN"),
+  TPLINK(120, "TP-LINK"),
+  ZYXEL_DEFAULT(121, "Zyxel default"),
+  COMMON_DEFAULT(122, "Common default");
 
   private final int code;
   private final String displayName;

@@ -121,6 +121,7 @@ class Algorithm private constructor(
             AlgorithmType.AIROCON_REALTEK,
             AlgorithmType.ARCADYAN,
             AlgorithmType.XIAOMI,
+            AlgorithmType.TPLINK,
             // Single-attempt weaknesses
             AlgorithmType.NULL_PIN,
             // FTE needs SSID + MAC

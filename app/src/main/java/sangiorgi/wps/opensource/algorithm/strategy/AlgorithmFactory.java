@@ -15,6 +15,8 @@ import sangiorgi.wps.opensource.algorithm.strategy.impl.FteAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.NullPinAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.OrangeAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.PinAlgorithm;
+import sangiorgi.wps.opensource.algorithm.strategy.impl.StaticDefaultPinAlgorithm;
+import sangiorgi.wps.opensource.algorithm.strategy.impl.TplinkAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.TrendNetAlgorithm;
 import sangiorgi.wps.opensource.algorithm.strategy.impl.XiaomiAlgorithm;
 
@@ -121,6 +123,15 @@ public class AlgorithmFactory {
 
       case NULL_PIN:
         return new NullPinAlgorithm();
+
+      case TPLINK:
+        return new TplinkAlgorithm();
+
+      case ZYXEL_DEFAULT:
+        return new StaticDefaultPinAlgorithm("Zyxel default", "22222480");
+
+      case COMMON_DEFAULT:
+        return new StaticDefaultPinAlgorithm("Common default", "11111110");
 
       default:
         return null;
