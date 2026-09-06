@@ -142,7 +142,10 @@ dependencies {
     implementation libs.commons.lang3
 
     // WPS Connection Library
-    implementation 'com.github.fulvius31:WpsConnectionLibrary:v2.0.0'
+    // Fork of fulvius31/WpsConnectionLibrary v2.0.0 with saner WPS timeout
+    // handling (fix/wps-timeout-handling): timed-out PINs are no longer
+    // blacklisted, attempts are paced and rate-limit backoff is applied.
+    implementation 'com.github.sibauchetam:WpsConnectionLibrary:v2.0.1'
 
     testImplementation libs.junit
     testImplementation libs.mockito.core
