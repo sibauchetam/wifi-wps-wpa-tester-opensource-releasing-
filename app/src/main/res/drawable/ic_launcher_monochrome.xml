@@ -3,26 +3,26 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-  <!-- Wi-Fi arcs glyph, centered on the adaptive-icon safe zone (66dp circle). -->
+  <!-- Themed-icon layer (Android 13+): launcher tints it from the wallpaper palette. -->
   <path
       android:pathData="M27.48,44.98 A37.5,37.5 0 0 1 81.52,44.98"
-      android:strokeColor="#B7C48F"
+      android:strokeColor="#FFFFFF"
       android:strokeWidth="6.25"
       android:strokeLineCap="round"
       android:fillColor="#00000000"/>
   <path
       android:pathData="M35.44,52.94 A26.25,26.25 0 0 1 72.56,52.94"
-      android:strokeColor="#B7C48F"
+      android:strokeColor="#FFFFFF"
       android:strokeWidth="6.25"
       android:strokeLineCap="round"
       android:fillColor="#00000000"/>
   <path
       android:pathData="M43.39,60.89 A15,15 0 0 1 64.61,60.89"
-      android:strokeColor="#B7C48F"
+      android:strokeColor="#FFFFFF"
       android:strokeWidth="6.25"
       android:strokeLineCap="round"
       android:fillColor="#00000000"/>
   <path
       android:pathData="M54,71.5 m-4.4,0 a4.4,4.4 0 1 1 8.8,0 a4.4,4.4 0 1 1 -8.8,0"
-      android:fillColor="#B7C48F"/>
+      android:fillColor="#FFFFFF"/>
 </vector>
