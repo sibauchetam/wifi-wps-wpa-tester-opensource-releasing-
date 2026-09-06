@@ -2,13 +2,11 @@ package sangiorgi.wps.opensource.ui.screens
 
 import android.app.Application
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -73,12 +71,11 @@ class PinSelectionDialogScreenshotTest {
     private fun render(state: PinSelectionUiState) {
         composeRule.setContent {
             WIFIWPSWPATESTEROPENSOURCETheme(darkTheme = true) {
+                // Faithful host for the production content: the dialog body lives on the
+                // surfaceContainerHigh container of the official Material 3 AlertDialog,
+                // which supplies the extraLarge shape, headline, paddings and buttons.
                 Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        // 915dp screen * 0.9, matching the production dialog cap.
-                        .heightIn(max = 823.dp),
-                    shape = MaterialTheme.shapes.extraLarge,
+                    modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
                     PinSelectionContent(
@@ -86,8 +83,6 @@ class PinSelectionDialogScreenshotTest {
                         onModeChange = { },
                         onCustomPinChange = { },
                         onSelectionChange = { },
-                        onDismiss = { },
-                        onStart = { },
                     )
                 }
             }

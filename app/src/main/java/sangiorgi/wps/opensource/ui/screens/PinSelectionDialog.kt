@@ -2,15 +2,10 @@ package sangiorgi.wps.opensource.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,23 +20,18 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,17 +43,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.SubcomposeLayout
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -75,7 +59,6 @@ import kotlinx.coroutines.launch
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.algorithm.PinGeneratorService
 import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
-import sangiorgi.wps.opensource.ui.motion.expressivePress
 import javax.inject.Inject
 
 @HiltViewModel
@@ -115,13 +98,13 @@ class PinSelectionViewModel @Inject constructor(
 }
 
 /**
- * PIN picker dialog.
- *
- * Built on Material 3 Expressive: the mode switch is a segmented button row, the
- * dismiss action is a tonal icon button, PIN rows use the selected-container
- * pattern with spring-animated tints, and every component inherits the expressive
- * motion scheme from the theme. The dialog keeps its full-height footprint but
- * reads as a light sheet rather than a stack of nested boxes.
+ * PIN picker dialog, built on the official Material 3 [AlertDialog] (basic
+ * variant) as prescribed by the Material Components docs (components/Dialog.md):
+ * the component itself supplies the extraLarge container shape, the
+ * surfaceContainerHigh container color, the headlineSmall title typography, the
+ * documented dialog paddings and the end-aligned action row. Per the same docs,
+ * a close affordance belongs only to full-screen dialogs, so a basic dialog is
+ * dismissed with the scrim tap or its action buttons.
  */
 @Composable
 fun PinSelectionDialog(
@@ -143,17 +126,10 @@ fun PinSelectionDialog(
     var customPin by remember { mutableStateOf("") }
     var selectedPins by remember(pins) { mutableStateOf(pins.map { it.pin }) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        // The sheet hugs its content and only stretches toward 90% of the
-        // screen when the PIN list actually needs the room - no empty desert
-        // under a short list.
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.9f).dp),
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.select_pins_to_test)) },
+        text = {
             PinSelectionContent(
                 state = PinSelectionUiState(
                     ssid = ssid,
@@ -173,10 +149,56 @@ fun PinSelectionDialog(
                 },
                 onCustomPinChange = { customPin = it },
                 onSelectionChange = { selectedPins = it },
-                onDismiss = onDismiss,
+            )
+        },
+        confirmButton = {
+            PinStartButton(
+                showCustomInput = showCustomInput,
+                customPin = customPin,
+                selectedPins = selectedPins,
+                isLoading = isLoading,
                 onStart = onPinSelected,
             )
-        }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+/**
+ * Confirm action in the dialog's confirmButton slot. Both dialog actions are
+ * text buttons, matching the dialog button styles documented in
+ * components/Dialog.md (Widget.Material3.Button.TextButton.Dialog).
+ */
+@Composable
+private fun PinStartButton(
+    showCustomInput: Boolean,
+    customPin: String,
+    selectedPins: List<String>,
+    isLoading: Boolean,
+    onStart: (List<String>) -> Unit,
+) {
+    val startEnabled = if (showCustomInput) {
+        customPin.length == 8
+    } else {
+        selectedPins.isNotEmpty() && !isLoading
+    }
+
+    TextButton(
+        onClick = {
+            val finalPins = if (showCustomInput) {
+                if (customPin.length == 8) listOf(customPin) else emptyList()
+            } else {
+                selectedPins
+            }
+            if (finalPins.isNotEmpty()) onStart(finalPins)
+        },
+        enabled = startEnabled,
+    ) {
+        Text(stringResource(R.string.start_testing))
     }
 }
 
@@ -191,9 +213,9 @@ internal data class PinSelectionUiState(
 )
 
 /**
- * Stateless body of the PIN picker: header, mode toggle, animated mode content
- * and the action footer. Kept stateless so previews and screenshot tests can
- * render the exact production dialog with fake data.
+ * Stateless `text` slot of the dialog: supporting SSID line, the mode toggle
+ * and the animated mode content. Kept stateless so previews and screenshot
+ * tests can render the exact production content with fake data.
  */
 @Composable
 internal fun PinSelectionContent(
@@ -201,155 +223,57 @@ internal fun PinSelectionContent(
     onModeChange: (Boolean) -> Unit,
     onCustomPinChange: (String) -> Unit,
     onSelectionChange: (List<String>) -> Unit,
-    onDismiss: () -> Unit,
-    onStart: (List<String>) -> Unit,
 ) {
-    PinSheetScaffold(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 20.dp),
-        header = { PinDialogHeader(ssid = state.ssid, onDismiss = onDismiss) },
-        toggle = {
-            PinModeToggle(
-                showCustomInput = state.showCustomInput,
-                onAlgorithmMode = { onModeChange(false) },
-                onCustomMode = { onModeChange(true) },
-            )
-        },
-        body = {
-            AnimatedContent(
-                targetState = state.showCustomInput,
-                modifier = Modifier.fillMaxWidth(),
-                transitionSpec = {
-                    ExpressiveMotion.swapIn() togetherWith ExpressiveMotion.swapOut()
-                },
-                label = "pinModeContent",
-            ) { customMode ->
-                if (customMode) {
-                    CustomPinInput(
-                        customPin = state.customPin,
-                        onCustomPinChange = onCustomPinChange,
-                    )
-                } else {
-                    PinListSection(
-                        pins = state.pins,
-                        isLoading = state.isLoading,
-                        selectedPins = state.selectedPins,
-                        onSelectionChange = onSelectionChange,
-                    )
-                }
-            }
-        },
-        footer = {
-            PinDialogFooter(
-                startEnabled = if (state.showCustomInput) {
-                    state.customPin.length == 8
-                } else {
-                    state.selectedPins.isNotEmpty() && !state.isLoading
-                },
-                onCancel = onDismiss,
-                onStart = {
-                    val finalPins = if (state.showCustomInput) {
-                        if (state.customPin.length == 8) listOf(state.customPin) else emptyList()
-                    } else {
-                        state.selectedPins
-                    }
-                    if (finalPins.isNotEmpty()) onStart(finalPins)
-                },
-            )
-        },
-    )
-}
-
-/**
- * Vertical scaffold that keeps the sheet adaptive: header, mode toggle and
- * footer measure at their natural height first, and the body receives the
- * remaining room under the dialog's height cap. A short list shrinks the
- * sheet; a long one scrolls while the footer stays visible.
- */
-@Composable
-private fun PinSheetScaffold(
-    modifier: Modifier = Modifier,
-    header: @Composable () -> Unit,
-    toggle: @Composable () -> Unit,
-    body: @Composable () -> Unit,
-    footer: @Composable () -> Unit,
-) {
-    SubcomposeLayout(modifier) { constraints ->
-        val gap = 12.dp.roundToPx()
-        val widthConstraints = Constraints(maxWidth = constraints.maxWidth)
-
-        val headerPlaceables = subcompose("header", header).map { it.measure(widthConstraints) }
-        val togglePlaceables = subcompose("toggle", toggle).map { it.measure(widthConstraints) }
-        val footerPlaceables = subcompose("footer", footer).map { it.measure(widthConstraints) }
-        val fixedHeight = headerPlaceables.sumOf { it.height } +
-            togglePlaceables.sumOf { it.height } +
-            footerPlaceables.sumOf { it.height } +
-            gap * 3
-
-        val bodyMaxHeight = (constraints.maxHeight - fixedHeight).coerceAtLeast(0)
-        val bodyPlaceables = subcompose("body", body).map {
-            it.measure(widthConstraints.copy(maxHeight = bodyMaxHeight))
-        }
-        val bodyHeight = bodyPlaceables.sumOf { it.height }
-
-        val totalHeight = (fixedHeight + bodyHeight).coerceAtMost(constraints.maxHeight)
-        layout(constraints.maxWidth, totalHeight) {
-            var y = 0
-            headerPlaceables.forEach {
-                it.placeRelative(0, y)
-                y += it.height
-            }
-            y += gap
-            togglePlaceables.forEach {
-                it.placeRelative(0, y)
-                y += it.height
-            }
-            y += gap
-            bodyPlaceables.forEach {
-                it.placeRelative(0, y)
-                y += it.height
-            }
-            y += gap
-            footerPlaceables.forEach { it.placeRelative(0, y) }
-        }
-    }
-}
-
-/** Title with the network name as quiet context, and the tonal dismiss action. */
-@Composable
-private fun PinDialogHeader(ssid: String?, onDismiss: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (!state.ssid.isNullOrBlank()) {
+            // Supporting text per Dialog.md: bodyMedium on onSurfaceVariant.
             Text(
-                text = stringResource(R.string.select_pins_to_test),
-                style = MaterialTheme.typography.headlineSmall,
+                text = state.ssid,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            if (!ssid.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = ssid,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        PinModeToggle(
+            showCustomInput = state.showCustomInput,
+            onAlgorithmMode = { onModeChange(false) },
+            onCustomMode = { onModeChange(true) },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        AnimatedContent(
+            targetState = state.showCustomInput,
+            modifier = Modifier.fillMaxWidth(),
+            transitionSpec = {
+                ExpressiveMotion.swapIn() togetherWith ExpressiveMotion.swapOut()
+            },
+            label = "pinModeContent",
+        ) { customMode ->
+            if (customMode) {
+                CustomPinInput(
+                    customPin = state.customPin,
+                    onCustomPinChange = onCustomPinChange,
+                )
+            } else {
+                PinListSection(
+                    pins = state.pins,
+                    isLoading = state.isLoading,
+                    selectedPins = state.selectedPins,
+                    onSelectionChange = onSelectionChange,
                 )
             }
-        }
-
-        FilledTonalIconButton(onClick = onDismiss) {
-            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
         }
     }
 }
 
 /**
  * Mode switch as a single segmented control - the Material 3 choice for two
- * mutually exclusive segments, reading as one switch instead of two chips.
+ * mutually exclusive segments (ToggleButtonGroup.md, singleSelection). The
+ * selected segment shows the component's own default check icon.
  */
 @Composable
 private fun PinModeToggle(showCustomInput: Boolean, onAlgorithmMode: () -> Unit, onCustomMode: () -> Unit) {
@@ -358,9 +282,6 @@ private fun PinModeToggle(showCustomInput: Boolean, onAlgorithmMode: () -> Unit,
             selected = !showCustomInput,
             onClick = onAlgorithmMode,
             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-            icon = {
-                Icon(Icons.Default.Pin, contentDescription = null, modifier = Modifier.size(16.dp))
-            },
             label = { Text(stringResource(R.string.algorithm_pins)) },
             modifier = Modifier.weight(1f),
         )
@@ -368,9 +289,6 @@ private fun PinModeToggle(showCustomInput: Boolean, onAlgorithmMode: () -> Unit,
             selected = showCustomInput,
             onClick = onCustomMode,
             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-            icon = {
-                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-            },
             label = { Text(stringResource(R.string.custom_pin)) },
             modifier = Modifier.weight(1f),
         )
@@ -386,11 +304,11 @@ private fun PinListSection(
     onSelectionChange: (List<String>) -> Unit,
 ) {
     if (isLoading) {
-        // Fixed-height loading state keeps the sheet compact while pins resolve.
+        // Fixed-height loading state keeps the dialog from jumping while pins resolve.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp),
+                .height(200.dp),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -425,10 +343,12 @@ private fun PinListSection(
                 }
             }
 
+            // Bounded height: a long list scrolls inside the dialog while a short
+            // one keeps the dialog compact.
             LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 320.dp),
             ) {
                 items(pins) { pinOption ->
                     PinSelectionItem(
@@ -451,50 +371,38 @@ private fun PinListSection(
 }
 
 /**
- * Flat PIN row: no card container - a soft primary-container wash springs in
- * when the row is selected, so a fully-selected list stays calm instead of
- * turning into a stack of solid blocks. The checkbox is visual-only; the whole
- * row is toggleable.
+ * Two-line list row per the Lists + Checkbox docs: the PIN is the headline, the
+ * source is the supporting text, and a standard [Checkbox] trails the text
+ * (as in the multi-select list samples of List.md / the dialog multi-choice
+ * item layout of Dialog.md). The checkbox is a purely visual indicator synced
+ * with the row state (`onCheckedChange = null`), so selection is communicated
+ * by the checkbox's own standard state colors - no custom background wash - and
+ * the whole row carries the toggle with the Checkbox role.
  */
 @Composable
 private fun PinSelectionItem(pinOption: PinOption, isSelected: Boolean, onToggle: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val containerColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
-        } else {
-            Color.Transparent
-        },
-        animationSpec = ExpressiveMotion.EffectsDefaultColor,
-        label = "pinRowContainer",
-    )
-
     Row(
         modifier = Modifier
-            .expressivePress(interactionSource, pressedScale = 0.98f)
-            .clip(MaterialTheme.shapes.small)
-            .background(containerColor)
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
             .toggleable(
                 value = isSelected,
-                interactionSource = interactionSource,
-                indication = LocalIndication.current,
                 role = Role.Checkbox,
                 onValueChange = { onToggle() },
             )
-            .padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(checked = isSelected, onCheckedChange = null)
-
-        Spacer(modifier = Modifier.width(8.dp))
-
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = pinOption.pin,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             PinBadges(pinOption = pinOption)
         }
+
+        Checkbox(checked = isSelected, onCheckedChange = null)
     }
 }
 
@@ -523,7 +431,7 @@ private fun PinBadges(pinOption: PinOption) {
         }
         Text(
             text = pinOption.description,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = if (pinOption.isFromDatabase || pinOption.isRecommended) {
                 MaterialTheme.colorScheme.primary
             } else {
@@ -570,35 +478,6 @@ private fun CustomPinInput(customPin: String, onCustomPinChange: (String) -> Uni
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.calculate_checksum))
             }
-        }
-    }
-}
-
-/**
- * Cancel plus a confident full-width start action - the Material 3 Expressive
- * emphasis pattern for the primary task of the dialog; squishes on press.
- */
-@Composable
-private fun PinDialogFooter(startEnabled: Boolean, onCancel: () -> Unit, onStart: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TextButton(onClick = onCancel) {
-            Text(stringResource(R.string.cancel))
-        }
-
-        val startInteraction = remember { MutableInteractionSource() }
-        Button(
-            onClick = onStart,
-            enabled = startEnabled,
-            interactionSource = startInteraction,
-            modifier = Modifier
-                .weight(1f)
-                .expressivePress(startInteraction, pressedScale = 0.97f),
-        ) {
-            Text(stringResource(R.string.start_testing))
         }
     }
 }
