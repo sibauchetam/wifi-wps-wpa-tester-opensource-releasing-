@@ -2,6 +2,11 @@ package sangiorgi.wps.opensource.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +63,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.algorithm.PinGeneratorService
-import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import javax.inject.Inject
 
 @HiltViewModel
@@ -69,17 +73,23 @@ class PinSelectionViewModel @Inject constructor(
     private val _pins = MutableStateFlow<List<PinOption>>(emptyList())
     val pins: StateFlow<List<PinOption>> = _pins.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    // Loading starts as true so the dialog never flashes an empty list for the
+    // first frames while the generator resolves; the fallback path clears it
+    // synchronously.
+    private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     fun loadPins(bssid: String?, ssid: String?, defaultPinLabel: String) {
         if (bssid.isNullOrEmpty()) {
+            _isLoading.value = false
             _pins.value = listOf(PinOption("12345670", defaultPinLabel, false))
             return
         }
 
+        // Set synchronously, not inside the coroutine, so the spinner is
+        // already on screen in the first composed frame.
+        _isLoading.value = true
         viewModelScope.launch {
-            _isLoading.value = true
             try {
                 val generatedPins = pinGeneratorService.generateAllPins(bssid, ssid)
                 _pins.value = generatedPins.map { pinWithSource ->
@@ -249,7 +259,11 @@ internal fun PinSelectionContent(
             targetState = state.showCustomInput,
             modifier = Modifier.fillMaxWidth(),
             transitionSpec = {
-                ExpressiveMotion.swapIn() togetherWith ExpressiveMotion.swapOut()
+                // Quick crossfade with an instant size change: animating the
+                // container size with springs resizes the dialog window every
+                // frame, which reads as stutter.
+                (fadeIn(animationSpec = tween(120)) togetherWith fadeOut(animationSpec = tween(90)))
+                    .using(SizeTransform(clip = false) { _, _ -> snap() })
             },
             label = "pinModeContent",
         ) { customMode ->
@@ -278,10 +292,13 @@ internal fun PinSelectionContent(
 @Composable
 private fun PinModeToggle(showCustomInput: Boolean, onAlgorithmMode: () -> Unit, onCustomMode: () -> Unit) {
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        // icon = {} drops the default trailing check mark: the filled segment
+        // already signals selection, and label-only segments center cleanly.
         SegmentedButton(
             selected = !showCustomInput,
             onClick = onAlgorithmMode,
             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            icon = {},
             label = { Text(stringResource(R.string.algorithm_pins)) },
             modifier = Modifier.weight(1f),
         )
@@ -289,6 +306,7 @@ private fun PinModeToggle(showCustomInput: Boolean, onAlgorithmMode: () -> Unit,
             selected = showCustomInput,
             onClick = onCustomMode,
             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            icon = {},
             label = { Text(stringResource(R.string.custom_pin)) },
             modifier = Modifier.weight(1f),
         )
@@ -461,10 +479,11 @@ private fun CustomPinInput(customPin: String, onCustomPinChange: (String) -> Uni
             isError = customPin.isNotEmpty() && customPin.length < 7,
         )
 
+        // Fade only: expand/shrink springs resize the dialog every frame.
         AnimatedVisibility(
             visible = customPin.length == 7,
-            enter = ExpressiveMotion.expandEnter(),
-            exit = ExpressiveMotion.collapseExit(),
+            enter = fadeIn(animationSpec = tween(120)),
+            exit = fadeOut(animationSpec = tween(90)),
         ) {
             FilledTonalButton(
                 onClick = { onCustomPinChange(calculateWpsChecksum(customPin)) },
