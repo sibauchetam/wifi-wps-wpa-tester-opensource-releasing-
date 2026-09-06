@@ -143,9 +143,10 @@ dependencies {
 
     // WPS Connection Library
     // Fork of fulvius31/WpsConnectionLibrary v2.0.0 with saner WPS timeout
-    // handling (fix/wps-timeout-handling): timed-out PINs are no longer
-    // blacklisted, attempts are paced and rate-limit backoff is applied.
-    implementation 'com.github.sibauchetam:WpsConnectionLibrary:v2.0.1'
+    // handling (fix/wps-timeout-handling): a timeout says nothing about the
+    // PIN itself, so timed-out PINs stay retryable instead of being
+    // blacklisted forever.
+    implementation 'com.github.sibauchetam:WpsConnectionLibrary:v2.0.2'
 
     testImplementation libs.junit
     testImplementation libs.mockito.core
