@@ -76,15 +76,15 @@ fun NetworkListSkeleton(itemCount: Int = 5) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 4.dp)
                 .background(brush, groupShape),
         ) {
             repeat(itemCount) { index ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(88.dp)
-                        .padding(16.dp),
+                        .height(80.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -93,13 +93,13 @@ fun NetworkListSkeleton(itemCount: Int = 5) {
                                 .size(width = 150.dp, height = 16.dp)
                                 .background(brush, RoundedCornerShape(6.dp)),
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
                                 .size(width = 110.dp, height = 12.dp)
                                 .background(brush, RoundedCornerShape(6.dp)),
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box(
                                 modifier = Modifier
@@ -113,7 +113,7 @@ fun NetworkListSkeleton(itemCount: Int = 5) {
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Box(
                         modifier = Modifier
                             .size(28.dp)

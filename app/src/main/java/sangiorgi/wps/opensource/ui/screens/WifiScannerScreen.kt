@@ -94,7 +94,7 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
 
     Scaffold(
         topBar = {
-            LargeTopAppBar(
+            MediumTopAppBar(
                 title = {
                     Column {
                         Text(stringResource(R.string.wifi_wps_scanner))
@@ -187,7 +187,7 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp),
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                         ),
@@ -258,7 +258,7 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(8.dp),
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer,
                             ),
@@ -348,7 +348,7 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp),
                     ) {
                         itemsIndexed(
                             items = filteredNetworks,
@@ -396,7 +396,7 @@ private fun FilterCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -490,7 +490,7 @@ private fun FilterCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NetworkCard(
+internal fun NetworkCard(
     network: WifiNetwork,
     onClick: () -> Unit,
     shape: Shape,
@@ -706,37 +706,38 @@ private fun SignalIndicator(@Suppress("UNUSED_PARAMETER") signalLevel: Int, sign
 }
 
 @Composable
-private fun EmptyState(onScan: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+internal fun EmptyState(onScan: () -> Unit) {
+    // Anchored near the top of the list area instead of floating in the
+    // middle of the screen: a compact block reads as part of the list flow
+    // and avoids two giant voids above and below it.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 40.dp, bottom = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        Icon(
+            imageVector = Icons.Default.WifiOff,
+            contentDescription = null,
+            modifier = Modifier.size(56.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.no_networks_found),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        // The empty state offers the next step instead of a dead end.
+        FilledTonalButton(onClick = onScan) {
             Icon(
-                imageVector = Icons.Default.WifiOff,
+                Icons.Default.Search,
                 contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.no_networks_found),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            // The empty state offers the next step instead of a dead end.
-            FilledTonalButton(onClick = onScan) {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.scan_button))
-            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.scan_button))
         }
     }
 }
