@@ -1,5 +1,6 @@
 package sangiorgi.wps.opensource.ui.screens
 
+import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -11,16 +12,19 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,6 +37,9 @@ import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import sangiorgi.wps.opensource.ui.motion.expressivePress
 import sangiorgi.wps.opensource.ui.scanner.WifiScannerViewModel
 import sangiorgi.wps.opensource.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +52,33 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
     var showOnlyWps by remember { mutableStateOf(true) }
     var sortBy by remember { mutableStateOf(SortOption.SIGNAL) }
     var dismissedWifiWarning by remember { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedBands by rememberSaveable { mutableStateOf(emptySet<WifiBand>()) }
+
+    val context = LocalContext.current
+    val reportTitle = stringResource(R.string.scan_report_title)
+
+    // The visible list is computed up front so the top bar's export action
+    // always reports exactly what the user is looking at.
+    val filteredNetworks = remember(networks, showOnlyWps, sortBy, searchQuery, selectedBands) {
+        networks
+            .filter { network ->
+                val matchesQuery = searchQuery.isBlank() ||
+                    network.ssid.contains(searchQuery, ignoreCase = true) ||
+                    network.vendor.contains(searchQuery, ignoreCase = true)
+                val matchesBand = selectedBands.isEmpty() || network.band in selectedBands
+                val matchesWps = !showOnlyWps || network.hasWps
+                matchesQuery && matchesBand && matchesWps
+            }
+            .sortedWith(
+                when (sortBy) {
+                    SortOption.SIGNAL -> compareByDescending { it.signalLevel }
+                    SortOption.NAME -> compareBy { it.ssid }
+                    SortOption.CHANNEL -> compareBy { it.channel }
+                    SortOption.SECURITY -> compareBy { it.security }
+                },
+            )
+    }
 
     // Reset dismissed state when WiFi is enabled
     LaunchedEffect(uiState.isWifiEnabled) {
@@ -79,6 +113,24 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                     }
                 },
                 actions = {
+                    // Export the filtered view as a shareable audit report.
+                    IconButton(
+                        onClick = {
+                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, buildScanReport(reportTitle, filteredNetworks))
+                            }
+                            context.startActivity(
+                                Intent.createChooser(
+                                    sendIntent,
+                                    context.getString(R.string.share_scan_report),
+                                ),
+                            )
+                        },
+                        enabled = filteredNetworks.isNotEmpty(),
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share_scan_report))
+                    }
                     IconButton(onClick = { showFilters = !showFilters }) {
                         Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.filter))
                     }
@@ -241,8 +293,18 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                     exit = ExpressiveMotion.collapseExit(),
                 ) {
                     FilterCard(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
                         showOnlyWps = showOnlyWps,
                         onShowOnlyWpsChange = { showOnlyWps = it },
+                        selectedBands = selectedBands,
+                        onBandToggle = { band ->
+                            selectedBands = if (band in selectedBands) {
+                                selectedBands - band
+                            } else {
+                                selectedBands + band
+                            }
+                        },
                         sortBy = sortBy,
                         onSortByChange = { sortBy = it },
                     )
@@ -274,19 +336,6 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                 }
 
                 // Network list
-                val filteredNetworks = remember(networks, showOnlyWps, sortBy) {
-                    networks
-                        .filter { if (showOnlyWps) it.hasWps else true }
-                        .sortedWith(
-                            when (sortBy) {
-                                SortOption.SIGNAL -> compareByDescending { it.signalLevel }
-                                SortOption.NAME -> compareBy { it.ssid }
-                                SortOption.CHANNEL -> compareBy { it.channel }
-                                SortOption.SECURITY -> compareBy { it.security }
-                            },
-                        )
-                }
-
                 if (filteredNetworks.isEmpty()) {
                     // Skeleton while the first scan is running; an actionable empty
                     // state once it settles - it teaches the next step instead of
@@ -335,8 +384,12 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
 
 @Composable
 private fun FilterCard(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     showOnlyWps: Boolean,
     onShowOnlyWpsChange: (Boolean) -> Unit,
+    selectedBands: Set<WifiBand>,
+    onBandToggle: (WifiBand) -> Unit,
     sortBy: SortOption,
     onSortByChange: (SortOption) -> Unit,
 ) {
@@ -353,6 +406,28 @@ private fun FilterCard(
                 .fillMaxWidth()
                 .padding(16.dp),
         ) {
+            // Live search across name and vendor.
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text(stringResource(R.string.search_networks)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchQueryChange("") }) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.dismiss),
+                            )
+                        }
+                    }
+                },
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -363,6 +438,35 @@ private fun FilterCard(
                     checked = showOnlyWps,
                     onCheckedChange = onShowOnlyWpsChange,
                 )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(stringResource(R.string.label_band), style = MaterialTheme.typography.labelMedium)
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Band filters: multi-select, any subset (empty = all bands).
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(WifiBand.BAND_2_4_GHZ, WifiBand.BAND_5_GHZ, WifiBand.BAND_6_GHZ).forEach { band ->
+                    FilterChip(
+                        selected = band in selectedBands,
+                        onClick = { onBandToggle(band) },
+                        label = {
+                            Text(
+                                when (band) {
+                                    WifiBand.BAND_2_4_GHZ -> stringResource(R.string.band_2_4_ghz)
+                                    WifiBand.BAND_5_GHZ -> stringResource(R.string.band_5_ghz)
+                                    WifiBand.BAND_6_GHZ -> stringResource(R.string.band_6_ghz)
+                                    else -> ""
+                                },
+                            )
+                        },
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -642,4 +746,29 @@ enum class SortOption(val labelResId: Int) {
     NAME(R.string.sort_name),
     CHANNEL(R.string.sort_channel),
     SECURITY(R.string.sort_security),
+}
+
+/**
+ * Plain-text audit report of the visible networks, one line per network -
+ * easy to paste into a ticket or a security review document.
+ */
+internal fun buildScanReport(title: String, networks: List<WifiNetwork>): String {
+    val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())
+    return buildString {
+        appendLine(title)
+        appendLine(timestamp)
+        appendLine("Networks: ${networks.size} \u00b7 WPS: ${networks.count { it.hasWps }}")
+        appendLine()
+        networks.forEach { network ->
+            val wps = when {
+                !network.hasWps -> "no"
+                network.wpsInfo?.isLocked == true -> "locked"
+                else -> "yes"
+            }
+            appendLine(
+                "${network.ssid} | ${network.bssid} | ${network.security.name} | WPS:$wps | " +
+                    "${network.signalLevel}dBm | ch${network.channel} | ${network.vendor}",
+            )
+        }
+    }.trimEnd()
 }

@@ -17,6 +17,9 @@
     <string name="wifi_wps_scanner">Escáner WiFi WPS</string>
     <string name="scanning">Escaneando…</string>
     <string name="filter">Filtrar</string>
+    <string name="search_networks">Buscar redes</string>
+    <string name="share_scan_report">Compartir informe de escaneo</string>
+    <string name="scan_report_title">Informe de escaneo Wi-Fi</string>
     <string name="refresh">Actualizar</string>
     <string name="scan">Escanear</string>
     <string name="scan_button">ESCANEAR</string>
