@@ -33,7 +33,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -43,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.domain.models.WifiNetwork
+import sangiorgi.wps.opensource.ui.components.ExpressiveLoadingIndicator
 import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import sangiorgi.wps.opensource.ui.theme.*
 
@@ -127,14 +127,15 @@ fun ConnectionProgressScreen(
                 )
             }
 
-            // Logs Section
+            // Logs Section. The console keeps its terminal feel, but on the
+            // palette's warm charcoal instead of pure black.
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.Black,
+                    containerColor = Neutral10,
                 ),
             ) {
                 LazyColumn(
@@ -285,9 +286,10 @@ private fun ConnectionStatusCard(
                 ) { status ->
                     when (status) {
                         ConnectionStatus.CONNECTING -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(64.dp),
-                                strokeWidth = 4.dp,
+                            // Expressive breathing-dot loader, scaled up to sit
+                            // where the result icons land.
+                            ExpressiveLoadingIndicator(
+                                modifier = Modifier.size(56.dp),
                             )
                         }
                         ConnectionStatus.SUCCESS -> {

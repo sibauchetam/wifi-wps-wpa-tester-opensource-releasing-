@@ -12,9 +12,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,6 +26,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -33,6 +38,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import sangiorgi.wps.opensource.domain.models.WifiNetwork
+import sangiorgi.wps.opensource.ui.components.ExpressiveLoadingIndicator
 import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import sangiorgi.wps.opensource.ui.navigation.NavRoute
 import sangiorgi.wps.opensource.ui.scanner.WifiScannerViewModel
@@ -152,12 +158,20 @@ fun MainScreen(rootChecker: RootChecker) {
     ) { state ->
         when (state) {
             is WpsApplication.InitializationState.Loading -> {
-                // Show loading screen while initializing
-                Box(
+                // Show loading screen while initializing: the expressive
+                // breathing-dot loader plus a quiet caption instead of a bare spinner.
+                Column(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    CircularProgressIndicator()
+                    ExpressiveLoadingIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.initializing),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
@@ -168,8 +182,9 @@ fun MainScreen(rootChecker: RootChecker) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "Failed to initialize: ${state.error}",
+                        text = stringResource(R.string.initialization_failed, state.error),
                         color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }

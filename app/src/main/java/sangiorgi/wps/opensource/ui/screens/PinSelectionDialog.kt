@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -63,6 +62,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.algorithm.PinGeneratorService
+import sangiorgi.wps.opensource.ui.components.ExpressiveLoadingIndicator
 import javax.inject.Inject
 
 @HiltViewModel
@@ -330,7 +330,9 @@ private fun PinListSection(
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator()
+                // Expressive loader: three dots breathing in a wave while the
+                // generator resolves.
+                ExpressiveLoadingIndicator()
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = stringResource(R.string.loading_pins),

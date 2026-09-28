@@ -4,7 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -19,6 +19,8 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,9 +28,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import sangiorgi.wps.opensource.R
 import sangiorgi.wps.opensource.domain.models.*
+import sangiorgi.wps.opensource.ui.components.NetworkListSkeleton
 import sangiorgi.wps.opensource.ui.motion.ExpressiveMotion
 import sangiorgi.wps.opensource.ui.motion.expressivePress
-import sangiorgi.wps.opensource.ui.motion.expressivePulse
 import sangiorgi.wps.opensource.ui.scanner.WifiScannerViewModel
 import sangiorgi.wps.opensource.ui.theme.*
 
@@ -51,9 +53,14 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
         }
     }
 
+    // Expressive collapsing header: the large title folds away as the list
+    // scrolls and the quiet bar carries the compact title underneath.
+    val topBarState = rememberTopAppBarState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(state = topBarState)
+
     Scaffold(
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = {
                     Column {
                         Text(stringResource(R.string.wifi_wps_scanner))
@@ -83,8 +90,10 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                 // keeping the chrome quiet like the reference design.
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
                 ),
+                scrollBehavior = scrollBehavior,
             )
         },
         floatingActionButton = {
@@ -114,7 +123,8 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(paddingValues)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
             ) {
                 // WiFi status and error messages
                 AnimatedVisibility(
@@ -278,19 +288,35 @@ fun WifiScannerScreen(viewModel: WifiScannerViewModel, onNetworkSelected: (WifiN
                 }
 
                 if (filteredNetworks.isEmpty()) {
-                    EmptyState(isScanning = isScanning)
+                    // Skeleton while the first scan is running; an actionable empty
+                    // state once it settles - it teaches the next step instead of
+                    // just reporting emptiness.
+                    if (isScanning) {
+                        NetworkListSkeleton()
+                    } else {
+                        EmptyState(onScan = { viewModel.startScan() })
+                    }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
-                        items(
+                        itemsIndexed(
                             items = filteredNetworks,
-                            key = { it.bssid },
-                        ) { network ->
+                            key = { _, network -> network.bssid },
+                        ) { index, network ->
                             NetworkCard(
                                 network = network,
                                 onClick = { onNetworkSelected(network) },
+                                // Grouped rows read as one continuous surface:
+                                // generous corners only at the group ends.
+                                shape = when {
+                                    filteredNetworks.size == 1 -> GroupedListDefaults.single
+                                    index == 0 -> GroupedListDefaults.top
+                                    index == filteredNetworks.lastIndex -> GroupedListDefaults.bottom
+                                    else -> GroupedListDefaults.middle
+                                },
+                                showDivider = index != filteredNetworks.lastIndex,
                                 // Expressive springs animate reordering (sort/filter changes),
                                 // and fade items in/out as they join or leave the list.
                                 modifier = Modifier.animateItem(
@@ -360,16 +386,23 @@ private fun FilterCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NetworkCard(network: WifiNetwork, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun NetworkCard(
+    network: WifiNetwork,
+    onClick: () -> Unit,
+    shape: Shape,
+    showDivider: Boolean,
+    modifier: Modifier = Modifier,
+) {
     // Squishy press: the card compresses while touched and springs back on release.
     val cardInteraction = remember { MutableInteractionSource() }
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 16.dp)
             .expressivePress(cardInteraction, pressedScale = 0.97f),
         onClick = onClick,
         interactionSource = cardInteraction,
+        shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = if (network.hasWps) {
                 // Gently olive-tinted: WPS-capable networks stand out without neon.
@@ -460,6 +493,14 @@ private fun NetworkCard(network: WifiNetwork, onClick: () -> Unit, modifier: Mod
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+
+        // Hairline divider between grouped rows.
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
         }
     }
 }
@@ -561,7 +602,7 @@ private fun SignalIndicator(@Suppress("UNUSED_PARAMETER") signalLevel: Int, sign
 }
 
 @Composable
-private fun EmptyState(isScanning: Boolean) {
+private fun EmptyState(onScan: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -569,45 +610,29 @@ private fun EmptyState(isScanning: Boolean) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // The icon swaps between scanning/empty states with a springy pop,
-            // and breathes with a slow pulse while a scan is running.
-            AnimatedContent(
-                targetState = isScanning,
-                transitionSpec = {
-                    ExpressiveMotion.swapIn(scaleFrom = 0.7f) togetherWith
-                        ExpressiveMotion.swapOut(scaleTo = 0.7f)
-                },
-                label = "emptyStateIcon",
-            ) { scanning ->
-                Icon(
-                    imageVector = if (scanning) Icons.Default.Wifi else Icons.Default.WifiOff,
-                    contentDescription = null,
-                    modifier = if (scanning) {
-                        Modifier
-                            .size(64.dp)
-                            .expressivePulse()
-                    } else {
-                        Modifier.size(64.dp)
-                    },
-                    tint = if (scanning) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.WifiOff,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = if (isScanning) {
-                    stringResource(
-                        R.string.scanning_for_networks,
-                    )
-                } else {
-                    stringResource(R.string.no_networks_found)
-                },
+                text = stringResource(R.string.no_networks_found),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            // The empty state offers the next step instead of a dead end.
+            FilledTonalButton(onClick = onScan) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.scan_button))
+            }
         }
     }
 }

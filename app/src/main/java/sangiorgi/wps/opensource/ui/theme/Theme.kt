@@ -161,9 +161,10 @@ fun WIFIWPSWPATESTEROPENSOURCETheme(
         }
     }
 
-    // Material 3 Expressive: the motion scheme factories are internal in
-    // material3 1.4.0, so expressive motion comes from ui/motion tokens (official
-    // spring values) plus expressive components - not from MaterialExpressiveTheme.
+    // Material 3 Expressive: MaterialExpressiveTheme / MotionScheme are internal
+    // in material3 1.4.0 (the version pinned by the stable compose BOM), so
+    // expressive motion comes from ui/motion tokens (official spring values)
+    // plus expressive components - not from MaterialExpressiveTheme.
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
